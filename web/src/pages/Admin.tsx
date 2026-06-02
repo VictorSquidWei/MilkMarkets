@@ -168,13 +168,41 @@ function TrackedPlayerCard() {
   );
 }
 
+function MarketToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label
+      className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-1.5 text-sm transition ${
+        checked ? 'border-ink bg-ink/[0.04] font-medium text-ink' : 'border-ink/15 text-ink/45'
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="accent-ink"
+      />
+      {label}
+    </label>
+  );
+}
+
 function LolGameCard() {
   const { games } = useGames();
   const { markets } = useMarkets();
+  const tracked = useTracked();
   const active = games.find((g) => g.status !== 'resolved') ?? null;
   const gameMarkets = active ? markets.filter((m) => m.gameId === active.gameId) : [];
 
   const [lines, setLines] = useState<ComputeLinesResult | null>(null);
+  const [sel, setSel] = useState({ win: true, kda: true, cs: true });
   const [resolveInfo, setResolveInfo] = useState<ResolveLatestResult | null>(null);
   const [busy, setBusy] = useState<string>('');
   const [msg, setMsg] = useState('');
@@ -200,7 +228,8 @@ function LolGameCard() {
           {!lines ? (
             <>
               <p className="text-sm text-ink/50">
-                Fetches Milk Lord’s last 10 ranked games and computes the KDA & CS/min lines.
+                Fetches {tracked.gameName}#{tracked.tagLine}’s last 10 ranked games and computes the KDA
+                &amp; CS/min lines.
               </p>
               <button
                 className={`${btn} mt-3`}
@@ -213,29 +242,61 @@ function LolGameCard() {
           ) : (
             <div className="rounded-xl bg-ink/[0.03] p-3">
               <p className="text-sm">
-                From <b>{lines.sampleSize}</b> ranked games:
+                From <b>{lines.sampleSize}</b> ranked games · KDA line <b>{lines.kdaLine}</b> · CS/min
+                line <b>{lines.csLine}</b>
               </p>
-              <p className="mt-1 text-sm">
-                KDA line <b>{lines.kdaLine}</b> · CS/min line <b>{lines.csLine}</b>
-              </p>
+              <div className="mt-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-ink/45">
+                  Markets to create
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  <MarketToggle
+                    label="Win / Loss"
+                    checked={sel.win}
+                    onChange={(v) => setSel((s) => ({ ...s, win: v }))}
+                  />
+                  <MarketToggle
+                    label={`KDA o/u ${lines.kdaLine}`}
+                    checked={sel.kda}
+                    onChange={(v) => setSel((s) => ({ ...s, kda: v }))}
+                  />
+                  <MarketToggle
+                    label={`CS/min o/u ${lines.csLine}`}
+                    checked={sel.cs}
+                    onChange={(v) => setSel((s) => ({ ...s, cs: v }))}
+                  />
+                </div>
+                <p className="mt-1.5 text-xs text-ink/45">
+                  Tip: skip CS/min for supports & junglers — role autofill makes it misleading.
+                </p>
+              </div>
               <div className="mt-3 flex gap-2">
                 <button
                   className={btn}
-                  disabled={busy === 'create'}
+                  disabled={busy === 'create' || (!sel.win && !sel.kda && !sel.cs)}
                   onClick={() =>
                     run('create', async () => {
+                      const count = [sel.win, sel.kda, sel.cs].filter(Boolean).length;
                       await openGame(
                         { kdaLine: lines.kdaLine, csLine: lines.csLine },
                         lines.baselineMatchId,
+                        sel,
                       );
                       setLines(null);
-                      setMsg('Game opened — 3 markets are live.');
+                      setSel({ win: true, kda: true, cs: true });
+                      setMsg(`Game opened — ${count} market${count > 1 ? 's' : ''} live.`);
                     })
                   }
                 >
-                  {busy === 'create' ? 'Creating…' : 'Create the 3 markets'}
+                  {busy === 'create' ? 'Creating…' : 'Create markets'}
                 </button>
-                <button className={btnGhost} onClick={() => setLines(null)}>
+                <button
+                  className={btnGhost}
+                  onClick={() => {
+                    setLines(null);
+                    setSel({ win: true, kda: true, cs: true });
+                  }}
+                >
                   Cancel
                 </button>
               </div>
@@ -269,7 +330,7 @@ function LolGameCard() {
 
       {active && active.status === 'locked' && (
         <>
-          <p className="text-sm text-ink/60">Game locked. Fetch the result when he’s finished playing.</p>
+          <p className="text-sm text-ink/60">Game locked. Fetch the result once the game finishes.</p>
           {!resolveInfo ? (
             <button
               className={`${btn} mt-3`}
@@ -280,7 +341,7 @@ function LolGameCard() {
             </button>
           ) : !resolveInfo.newGame ? (
             <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-              No new game found since this market opened. Wait for him to finish, then fetch again.
+              No new game found since this market opened. Wait for the game to finish, then fetch again.
               <div className="mt-2">
                 <button className={btnGhost} onClick={() => setResolveInfo(null)}>
                   Dismiss
@@ -295,17 +356,27 @@ function LolGameCard() {
                   will still resolve as-is.
                 </p>
               )}
-              <Outcome label="Win" value={resolveInfo.win ? 'Won' : 'Lost'} outcome={resolveInfo.win ? 'YES' : 'NO'} />
-              <Outcome
-                label={`KDA ${resolveInfo.kda?.toFixed(2)} vs ${active.kdaLine}`}
-                value={resolveInfo.kda! > active.kdaLine ? 'Over' : 'Under'}
-                outcome={resolveInfo.kda! > active.kdaLine ? 'YES' : 'NO'}
-              />
-              <Outcome
-                label={`CS/min ${resolveInfo.csPerMin?.toFixed(2)} vs ${active.csLine}`}
-                value={resolveInfo.csPerMin! > active.csLine ? 'Over' : 'Under'}
-                outcome={resolveInfo.csPerMin! > active.csLine ? 'YES' : 'NO'}
-              />
+              {active.marketIds.win && (
+                <Outcome
+                  label="Win"
+                  value={resolveInfo.win ? 'Won' : 'Lost'}
+                  outcome={resolveInfo.win ? 'YES' : 'NO'}
+                />
+              )}
+              {active.marketIds.kda && (
+                <Outcome
+                  label={`KDA ${resolveInfo.kda?.toFixed(2)} vs ${active.kdaLine}`}
+                  value={resolveInfo.kda! > active.kdaLine ? 'Over' : 'Under'}
+                  outcome={resolveInfo.kda! > active.kdaLine ? 'YES' : 'NO'}
+                />
+              )}
+              {active.marketIds.cs && (
+                <Outcome
+                  label={`CS/min ${resolveInfo.csPerMin?.toFixed(2)} vs ${active.csLine}`}
+                  value={resolveInfo.csPerMin! > active.csLine ? 'Over' : 'Under'}
+                  outcome={resolveInfo.csPerMin! > active.csLine ? 'YES' : 'NO'}
+                />
+              )}
               <div className="mt-3 flex gap-2">
                 <button
                   className={btn}

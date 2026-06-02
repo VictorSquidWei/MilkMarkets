@@ -253,9 +253,12 @@ auto-computed lines._
 - **AC-G1.1** Given valid Riot config (key + tracked player), when I click **Open new game**, then the
   app fetches the last 10 ranked games via the proxy and computes the **KDA** and **CS/min** lines.
 - **AC-G1.2** Before creating anything, I see the **computed lines** and can **confirm or cancel**.
-- **AC-G1.3** On confirm, three markets are created — **Win/Loss**, **KDA O/U (with line)**, **CS/min
+- **AC-G1.3** On confirm, the markets are created — from **Win/Loss**, **KDA O/U (with line)**, **CS/min
   O/U (with line)** — all with status **open**, grouped as one game.
-- **AC-G1.4** The three markets appear on the Markets home immediately.
+- **AC-G1.3a** _(Added post-approval)_ The admin **selects which of the three** to create (each
+  toggleable; at least one required). CS/min is commonly skipped for support/jungle players where
+  role-autofill makes CS/min misleading. Lock/resolve/delete operate on whichever markets exist.
+- **AC-G1.4** The created markets appear on the Markets home immediately.
 - **AC-G1.5** Whether opening a new game is allowed while a prior game is still unresolved is
   [OQ-11](#oq-11).
 

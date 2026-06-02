@@ -78,7 +78,7 @@ function HowItWorksModal({ onClose }: { onClose: () => void }) {
             rights on the leaderboard.
           </Section>
           <Section title="YES or NO">
-            Every market is a yes/no question (like “Does Milk Lord win this game?”). You bet by buying{' '}
+            Every market is a yes/no question (like “Does our player win this game?”). You bet by buying{' '}
             <span className="font-semibold text-yes">YES</span> or{' '}
             <span className="font-semibold text-no">NO</span> shares.
           </Section>

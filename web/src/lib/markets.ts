@@ -41,11 +41,25 @@ function newMarketBase(now: number, priceCents = 50) {
   };
 }
 
-/** Open a new LoL game: 3 markets + a game doc. Blocks if a game is still unresolved (OQ-11). */
+export interface MarketSelection {
+  win: boolean;
+  kda: boolean;
+  cs: boolean;
+}
+
+/**
+ * Open a new LoL game, creating only the selected market types (spec US-G1). The CS/min market is
+ * often skipped for support/jungle players where CS/min is misleading. Blocks if a game is still
+ * unresolved (OQ-11).
+ */
 export async function openGame(
   lines: { kdaLine: number; csLine: number },
   baselineMatchId: string,
+  selection: MarketSelection,
 ): Promise<string> {
+  if (!selection.win && !selection.kda && !selection.cs)
+    throw new Error('Select at least one market to create.');
+
   const active = await getDocs(
     query(collection(db, 'games'), where('status', 'in', ['open', 'locked'])),
   );
@@ -61,44 +75,54 @@ export async function openGame(
   const now = Date.now();
   const gameRef = doc(collection(db, 'games'));
   const gameId = gameRef.id;
-  const winRef = doc(collection(db, 'markets'));
-  const kdaRef = doc(collection(db, 'markets'));
-  const csRef = doc(collection(db, 'markets'));
   const base = newMarketBase(now);
   const today = dayPST(now);
+  const marketIds: { win?: string; kda?: string; cs?: string } = {};
 
   const batch = writeBatch(db);
-  batch.set(winRef, {
-    ...base,
-    title: `Does ${playerName} win this game?`,
-    category: 'lol_win',
-    gameId,
-    line: null,
-    dayPST: today,
-  } satisfies MarketDoc);
-  batch.set(kdaRef, {
-    ...base,
-    title: `KDA over ${lines.kdaLine}?`,
-    category: 'lol_kda',
-    gameId,
-    line: lines.kdaLine,
-    dayPST: today,
-  } satisfies MarketDoc);
-  batch.set(csRef, {
-    ...base,
-    title: `CS/min over ${lines.csLine}?`,
-    category: 'lol_cs',
-    gameId,
-    line: lines.csLine,
-    dayPST: today,
-  } satisfies MarketDoc);
+  if (selection.win) {
+    const ref = doc(collection(db, 'markets'));
+    marketIds.win = ref.id;
+    batch.set(ref, {
+      ...base,
+      title: `Does ${playerName} win this game?`,
+      category: 'lol_win',
+      gameId,
+      line: null,
+      dayPST: today,
+    } satisfies MarketDoc);
+  }
+  if (selection.kda) {
+    const ref = doc(collection(db, 'markets'));
+    marketIds.kda = ref.id;
+    batch.set(ref, {
+      ...base,
+      title: `KDA over ${lines.kdaLine}?`,
+      category: 'lol_kda',
+      gameId,
+      line: lines.kdaLine,
+      dayPST: today,
+    } satisfies MarketDoc);
+  }
+  if (selection.cs) {
+    const ref = doc(collection(db, 'markets'));
+    marketIds.cs = ref.id;
+    batch.set(ref, {
+      ...base,
+      title: `CS/min over ${lines.csLine}?`,
+      category: 'lol_cs',
+      gameId,
+      line: lines.csLine,
+      dayPST: today,
+    } satisfies MarketDoc);
+  }
   batch.set(gameRef, {
     status: 'open',
     kdaLine: lines.kdaLine,
     csLine: lines.csLine,
     baselineMatchId,
     resolvedMatchId: null,
-    marketIds: { win: winRef.id, kda: kdaRef.id, cs: csRef.id },
+    marketIds,
     createdAt: now,
     resolvedAt: null,
   } satisfies GameDoc);
@@ -107,12 +131,12 @@ export async function openGame(
   return gameId;
 }
 
-/** Lock all 3 markets of a game (status → locked, trading stops; spec BR-13). */
+/** Lock a game's markets (status → locked, trading stops; spec BR-13). */
 export async function lockGame(game: Game): Promise<void> {
   const now = Date.now();
   const batch = writeBatch(db);
   for (const id of [game.marketIds.win, game.marketIds.kda, game.marketIds.cs]) {
-    batch.update(doc(db, 'markets', id), { status: 'locked', updatedAt: now });
+    if (id) batch.update(doc(db, 'markets', id), { status: 'locked', updatedAt: now });
   }
   batch.update(doc(db, 'games', game.gameId), { status: 'locked' });
   await batch.commit();
@@ -160,18 +184,16 @@ export async function settleMarket(marketId: string, outcome: Outcome): Promise<
   });
 }
 
-/** Resolve all 3 markets of a LoL game from one Riot match result (spec US-G3). */
+/** Resolve a LoL game's markets from one Riot match result; only resolves markets that exist (US-G3). */
 export async function resolveGame(game: Game, riot: ResolveLatestResult): Promise<void> {
   if (!riot.newGame || riot.win === undefined || riot.kda === undefined || riot.csPerMin === undefined)
     throw new Error('No new game found since this market opened.');
 
-  const winOutcome: Outcome = riot.win ? 'YES' : 'NO';
-  const kdaOutcome: Outcome = riot.kda > game.kdaLine ? 'YES' : 'NO'; // ties → NO (OQ-2)
-  const csOutcome: Outcome = riot.csPerMin > game.csLine ? 'YES' : 'NO';
-
-  await settleMarket(game.marketIds.win, winOutcome);
-  await settleMarket(game.marketIds.kda, kdaOutcome);
-  await settleMarket(game.marketIds.cs, csOutcome);
+  if (game.marketIds.win) await settleMarket(game.marketIds.win, riot.win ? 'YES' : 'NO');
+  if (game.marketIds.kda)
+    await settleMarket(game.marketIds.kda, riot.kda > game.kdaLine ? 'YES' : 'NO'); // ties → NO (OQ-2)
+  if (game.marketIds.cs)
+    await settleMarket(game.marketIds.cs, riot.csPerMin > game.csLine ? 'YES' : 'NO');
 
   await updateDoc(doc(db, 'games', game.gameId), {
     status: 'resolved',
@@ -245,7 +267,7 @@ export async function deleteGameCascade(game: Game): Promise<void> {
   if (game.status !== 'resolved') throw new Error('Resolve the game before deleting it.');
   let refs: DocumentReference[] = [];
   for (const id of [game.marketIds.win, game.marketIds.kda, game.marketIds.cs]) {
-    refs = refs.concat(await marketRefsToDelete(id));
+    if (id) refs = refs.concat(await marketRefsToDelete(id));
   }
   refs.push(doc(db, 'games', game.gameId));
   await deleteRefs(refs);

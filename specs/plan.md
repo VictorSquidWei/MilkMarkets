@@ -103,6 +103,15 @@ into `MarketCard`, which renders a "You hold N YES/NO" chip. `MarketDetail` show
 (`value − costBasis`, colored) — shown only for active (non-resolved) holdings. Pure display; no new
 data model or rules.
 
+### D-0.9 — Selectable LoL markets + de-"Milk Lord" (post-approval)
+
+`openGame(lines, baselineMatchId, selection)` takes a `{win, kda, cs}` selection and creates only the
+chosen markets; `GameDoc.marketIds` fields are now **optional**, and `lockGame`/`resolveGame`/
+`deleteGameCascade` skip absent ones. The admin card shows three toggles (≥1 required) with a tip to
+skip CS/min for support/jungle. The open-game blurb now uses the live tracked Riot ID (`useTracked`)
+instead of the hardcoded "Milk Lord"; the onboarding example and resolve copy were de-gendered/
+genericized too. No schema migration needed (additive/optional).
+
 ### D-0.8 — Portfolio: average buy price (post-approval)
 
 Each open-position row on the Portfolio page now shows **"Bought X¢"** = `costBasis / (yesShares +

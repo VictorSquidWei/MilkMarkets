@@ -50,7 +50,7 @@ export interface GameDoc {
   csLine: number;
   baselineMatchId: string;
   resolvedMatchId: string | null;
-  marketIds: { win: string; kda: string; cs: string };
+  marketIds: { win?: string; kda?: string; cs?: string }; // admin can create a subset
   createdAt: number;
   resolvedAt: number | null;
 }
