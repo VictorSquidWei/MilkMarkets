@@ -1,0 +1,12 @@
+{
+  "name": "milk-market-seed",
+  "private": true,
+  "type": "module",
+  "description": "One-time seed: create the 11 users with balance 1000 and set the admin flag.",
+  "scripts": {
+    "seed": "node seed.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.3.0"
+  }
+}

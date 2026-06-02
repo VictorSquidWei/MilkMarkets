@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "markets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "dayPST", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

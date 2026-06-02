@@ -1,0 +1,82 @@
+rules_version = '2';
+
+// Milk Market security rules (spec §7-J, plan §6).
+// Signed-in users can read markets/games/users/positions/trades. Secrets (config/*) are
+// read-denied to everyone; the Cloud Function reads them via the Admin SDK (bypasses rules).
+// `isAdmin` is client-immutable. Trades may write balances/positions/markets within
+// constrained shapes (cheating is out of scope, C-7) but cannot touch status/isAdmin/config.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    // request changes ONLY the given top-level keys (subset allowed).
+    function changed(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();                 // leaderboard needs all users
+      allow create, delete: if false;            // seeded via Admin SDK only
+      allow update: if signedIn()
+        && unchanged('isAdmin') && unchanged('email') && unchanged('displayName')
+        && (
+          // self: cash moves on own buy/sell
+          (request.auth.uid == uid && changed(['balance', 'updatedAt']))
+          // admin: resolution updates cash + cached stats on any user
+          || (isAdmin() && changed(['balance', 'realizedProfit', 'wins', 'losses', 'updatedAt']))
+        );
+    }
+
+    match /markets/{m} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();        // open game / create joe / cleanup
+      allow update: if isAdmin()                 // lock / resolve / admin edits
+        || (
+          // a trade: market stays open, only trade fields move
+          resource.data.status == 'open'
+          && request.resource.data.status == 'open'
+          && changed(['lmsr', 'priceYes', 'volume', 'priceHistory', 'updatedAt'])
+        );
+    }
+
+    match /games/{g} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /positions/{pid} {
+      allow read: if signedIn();                                   // leaderboard MTM
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());   // own trade, or admin resolution
+      allow delete: if isAdmin();                                  // admin history cleanup
+    }
+
+    match /trades/{t} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;                                      // append-only
+      allow delete: if isAdmin();                                  // admin history cleanup
+    }
+
+    match /config/{doc} {
+      allow read: if false;          // keeps the Riot key off the client (AC-J2.1)
+      allow write: if isAdmin();     // admin pastes the rotated key
+    }
+
+    match /meta/{doc} {
+      allow read: if signedIn();     // tracked player name/tag (non-secret) — for display
+      allow write: if isAdmin();     // admin sets which LoL account to track
+    }
+  }
+}

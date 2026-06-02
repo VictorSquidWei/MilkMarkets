@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  @apply text-ink antialiased;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* matte milk-cream backdrop: a soft white sheen over a warm cream gradient */
+  background:
+    radial-gradient(1100px 520px at 50% -160px, #ffffff 0%, rgba(255, 255, 255, 0) 70%),
+    linear-gradient(180deg, #f2f0e8 0%, #f8f7f1 28%, #fdfdfc 100%);
+  background-attachment: fixed;
+}
+
+@layer utilities {
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+::selection {
+  background: rgba(14, 159, 110, 0.18);
+}

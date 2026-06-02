@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+*.local
+.env
+.env.*
+!.env.example
+
+# Secrets — never commit
+serviceAccountKey.json
+**/serviceAccountKey.json
+.runtimeconfig.json
+
+# Firebase
+.firebase/
+firebase-debug.log
+functions/node_modules/
+web/node_modules/
+web/dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
