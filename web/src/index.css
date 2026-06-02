@@ -46,6 +46,29 @@ body {
   }
 }
 
+/* Vertical activity ticker: content is duplicated, so -50% loops seamlessly. Pause on hover.
+   Duration is set inline (per item) so the pace stays calm regardless of trade count. */
+@keyframes ticker-y {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+.animate-ticker-y {
+  animation: ticker-y 60s linear infinite;
+  will-change: transform;
+}
+.ticker-wrap:hover .animate-ticker-y {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker-y {
+    animation: none;
+  }
+}
+
 ::selection {
   background: rgba(14, 159, 110, 0.22);
 }

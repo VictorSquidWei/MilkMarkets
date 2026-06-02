@@ -103,6 +103,19 @@ into `MarketCard`, which renders a "You hold N YES/NO" chip. `MarketDetail` show
 (`value − costBasis`, colored) — shown only for active (non-resolved) holdings. Pure display; no new
 data model or rules.
 
+### D-1.2 — Live ticker, collapsible history, analytical polish (post-approval)
+
+Frontend-only, no backend change (trades are already written per buy/sell and world-readable):
+- **Live ticker** (`components/Ticker.tsx` + `hooks/useRecentTrades.ts`): subscribes to
+  `trades orderBy ts desc limit 25` (single-field index, no composite), maps uid→name and
+  marketId→title from `useAllUsers`/`useMarkets`, renders a **vertical** activity feed (CSS
+  `@keyframes ticker-y` translateY, content duplicated for a seamless −50% loop, pause-on-hover,
+  respects `prefers-reduced-motion`). The scroll **duration is set inline ≈ 2.8s × item count**, so the
+  pace stays a calm crawl whether there are 3 trades or 25. Color-coded by side; each row shows trader ·
+  BUY/SELL · shares+side · price · amount · market. Mounted atop `Home`.
+- **Collapsible History** on Home — `useState(false)` (collapsed by default) with a count + chevron.
+- **Probability bar** on `MarketCard` — a thin YES(green)/NO(red) split bar. Theme-aware throughout.
+
 ### D-1.1 — Per-market lock / unlock (post-approval)
 
 `lockMarket(id)` / `unlockMarket(id)` flip a single market's `status` between `locked` and `open`

@@ -1,10 +1,12 @@
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useMarkets } from '../hooks/useMarkets';
 import { useGames } from '../hooks/useGames';
 import { useTracked } from '../hooks/useTracked';
 import { useUser } from '../hooks/useUser';
 import { usePositions } from '../hooks/usePositions';
 import MarketCard from '../components/MarketCard';
+import Ticker from '../components/Ticker';
 import Loading from '../components/Loading';
 import type { Game, MarketCategory, Position } from '../lib/types';
 
@@ -25,6 +27,7 @@ export default function Home() {
   const tracked = useTracked();
   const { user } = useUser();
   const { positions } = usePositions(user?.uid);
+  const [showHistory, setShowHistory] = useState(false);
   if (loading) return <Loading />;
 
   const posByMarket = new Map<string, Position>(
@@ -52,9 +55,10 @@ export default function Home() {
 
   return (
     <div>
+      <Ticker />
       <h1 className="text-2xl font-semibold tracking-tight">Markets</h1>
       <p className="mt-0.5 text-sm text-ink/50">
-        Live markets you can trade. Resolved ones drop into History below.
+        Live markets you can trade. Resolved ones are tucked into History at the bottom.
       </p>
 
       {activeGames.length ? (
@@ -87,14 +91,28 @@ export default function Home() {
       )}
 
       {resolved.length > 0 && (
-        <>
-          <SectionHeading title="History" sub="Resolved markets — final, no more trading" />
-          <div className="grid gap-3 opacity-90 sm:grid-cols-2">
-            {resolved.map((m) => (
-              <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
-            ))}
-          </div>
-        </>
+        <div className="mt-7">
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="flex w-full items-center justify-between rounded-xl py-1 text-left transition hover:opacity-80"
+            aria-expanded={showHistory}
+          >
+            <span className="text-lg font-semibold tracking-tight">
+              History <span className="font-normal text-ink/40">({resolved.length})</span>
+            </span>
+            <ChevronDown
+              size={18}
+              className={`text-ink/40 transition-transform ${showHistory ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {showHistory && (
+            <div className="mt-3 grid gap-3 opacity-90 sm:grid-cols-2">
+              {resolved.map((m) => (
+                <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

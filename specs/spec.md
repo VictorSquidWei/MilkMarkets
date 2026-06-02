@@ -194,6 +194,14 @@ decide what to trade._
   under a distinct **"History"** section (final, no trading).
 - **AC-C1.7** _(Added post-approval)_ A market card the **viewer holds a position in** shows a
   "You hold N YES/NO" indicator (Kalshi-style), flagging it before they open it.
+- **AC-C1.8** _(Added post-approval)_ The **History** section is **collapsible and collapsed by
+  default**, showing a count; expanding reveals the resolved-market cards.
+- **AC-C1.9** _(Added post-approval)_ A **live trade ticker** sits at the top of the home page (above
+  Markets): a **vertical, slowly-scrolling** activity feed of recent trades — trader, BUY/SELL, shares
+  + side, price, amount, market — color-coded by side, updating live as people trade. Pace stays calm
+  regardless of trade count; theme-aware; pauses on hover; respects reduced-motion.
+- **AC-C1.10** _(Added post-approval)_ Each market card shows a thin **YES/NO probability bar**
+  (analytical, stock-split style).
 
 ### D. Market Detail & Trading
 

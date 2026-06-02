@@ -51,6 +51,13 @@ export default function MarketCard({
           </div>
         </div>
       </div>
+      <div
+        className="mt-2 flex h-1.5 overflow-hidden rounded-full"
+        title={`${formatPct(yes)} YES · ${formatPct(no)} NO`}
+      >
+        <div className="bg-yes" style={{ width: `${yes}%` }} />
+        <div className="bg-no" style={{ width: `${no}%` }} />
+      </div>
       {holding && (
         <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-ink/[0.05] px-2.5 py-1.5 text-[11px] font-medium text-ink/60">
           <Wallet size={12} className="shrink-0 text-ink/45" />
