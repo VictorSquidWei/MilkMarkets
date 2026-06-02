@@ -21,3 +21,14 @@ export function formatPSTDateTime(ts: number): string {
     timeStyle: 'short',
   }).format(new Date(ts));
 }
+
+/** Compact Pacific date+time for chart axes/tooltips, e.g. "Jun 1, 2:30 PM". */
+export function formatPSTShort(ts: number): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: PACIFIC_TZ,
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(ts));
+}

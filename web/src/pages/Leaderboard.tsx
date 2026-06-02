@@ -61,7 +61,7 @@ export default function Leaderboard() {
             {rows.map((r, i) => {
               const isMe = me?.uid === r.uid;
               return (
-                <tr key={r.uid} className={isMe ? 'bg-milk-100' : ''}>
+                <tr key={r.uid} className={isMe ? 'bg-milk-100 dark:bg-ink/10' : ''}>
                   <td className="tnum px-3 py-2.5 text-ink/40">{i + 1}</td>
                   <td className="px-3 py-2.5 font-medium">
                     {r.displayName}
@@ -71,9 +71,9 @@ export default function Leaderboard() {
                   <td
                     className={`tnum px-3 py-2.5 text-right ${
                       r.realizedProfit > 0
-                        ? 'text-yes-dark'
+                        ? 'text-yes-dark dark:text-yes'
                         : r.realizedProfit < 0
-                          ? 'text-no-dark'
+                          ? 'text-no-dark dark:text-no'
                           : 'text-ink/50'
                     }`}
                   >

@@ -102,7 +102,7 @@ export default function TradePanel({
           onClick={() => setSide('YES')}
           className={
             side === 'YES'
-              ? 'flex-1 rounded-xl border border-yes bg-yes-soft py-2 text-sm font-semibold text-yes-dark'
+              ? 'flex-1 rounded-xl border border-yes bg-yes-soft py-2 text-sm font-semibold text-yes-dark dark:bg-yes/15 dark:text-yes'
               : 'flex-1 rounded-xl border border-ink/15 py-2 text-sm font-semibold text-ink/50 hover:border-ink/30'
           }
         >
@@ -112,7 +112,7 @@ export default function TradePanel({
           onClick={() => setSide('NO')}
           className={
             side === 'NO'
-              ? 'flex-1 rounded-xl border border-no bg-no-soft py-2 text-sm font-semibold text-no-dark'
+              ? 'flex-1 rounded-xl border border-no bg-no-soft py-2 text-sm font-semibold text-no-dark dark:bg-no/15 dark:text-no'
               : 'flex-1 rounded-xl border border-ink/15 py-2 text-sm font-semibold text-ink/50 hover:border-ink/30'
           }
         >
@@ -167,7 +167,7 @@ export default function TradePanel({
       <button
         disabled={!canSubmit}
         onClick={submit}
-        className={`mt-3 w-full rounded-xl py-2.5 text-sm font-semibold text-paper shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40 ${
+        className={`mt-3 w-full rounded-xl py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40 ${
           side === 'YES'
             ? 'bg-gradient-to-b from-yes to-yes-dark'
             : 'bg-gradient-to-b from-no to-no-dark'

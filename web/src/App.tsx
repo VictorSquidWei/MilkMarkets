@@ -1,4 +1,5 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './hooks/useTheme';
 import { AuthProvider } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
@@ -12,22 +13,24 @@ import Admin from './pages/Admin';
 // HashRouter is used so GitHub Pages serves deep links / refreshes without a 404 (plan §2).
 export default function App() {
   return (
-    <AuthProvider>
-      <HashRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/market/:id" element={<MarketDetail />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route element={<AdminRoute />}>
-              <Route path="/admin" element={<Admin />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <HashRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/market/:id" element={<MarketDetail />} />
+              <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<Admin />} />
+              </Route>
             </Route>
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </HashRouter>
-    </AuthProvider>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </HashRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

@@ -49,7 +49,7 @@ export default function Login() {
     <div className="grid min-h-full place-items-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-white to-milk-200 text-3xl shadow-card ring-1 ring-ink/5">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-paper to-milk-100 text-3xl shadow-card ring-1 ring-ink/10 dark:from-ink/10 dark:to-ink/[0.03]">
             {CURRENCY.symbol}
           </div>
           <h1 className="mt-4 text-3xl font-bold tracking-tight">Milk Market</h1>
@@ -58,7 +58,7 @@ export default function Login() {
 
         <form
           onSubmit={onSubmit}
-          className="space-y-3 rounded-3xl border border-ink/[0.06] bg-white/80 p-7 shadow-pop backdrop-blur-xl"
+          className="space-y-3 rounded-3xl border border-ink/[0.06] bg-paper/80 p-7 shadow-pop backdrop-blur-xl"
         >
           <label className="block">
             <span className="text-xs font-medium text-ink/60">Email</span>

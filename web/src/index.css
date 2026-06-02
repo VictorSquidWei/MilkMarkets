@@ -2,8 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme tokens — ink = text/contrast, paper = surface. Flip with the .dark class. */
 :root {
+  --ink: 11 11 12;
+  --paper: 255 255 255;
   color-scheme: light;
+}
+.dark {
+  --ink: 237 237 234;
+  --paper: 22 23 28;
+  color-scheme: dark;
 }
 
 html,
@@ -15,10 +23,20 @@ body,
 body {
   @apply text-ink antialiased;
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  /* matte milk-cream backdrop: a soft white sheen over a warm cream gradient */
+  /* LIGHT: milky cream with soft indigo + mint color blooms */
   background:
-    radial-gradient(1100px 520px at 50% -160px, #ffffff 0%, rgba(255, 255, 255, 0) 70%),
-    linear-gradient(180deg, #f2f0e8 0%, #f8f7f1 28%, #fdfdfc 100%);
+    radial-gradient(820px 480px at 12% -8%, rgba(80, 120, 240, 0.13), transparent 60%),
+    radial-gradient(760px 460px at 100% 2%, rgba(16, 185, 129, 0.1), transparent 55%),
+    linear-gradient(165deg, #eef0f7 0%, #f6f4ee 42%, #fbfaf6 100%);
+  background-attachment: fixed;
+  transition: background-color 0.2s ease;
+}
+.dark body {
+  /* DARK: deep slate with the same blooms, brighter */
+  background:
+    radial-gradient(820px 480px at 12% -8%, rgba(99, 102, 241, 0.22), transparent 60%),
+    radial-gradient(760px 460px at 100% 2%, rgba(16, 185, 129, 0.16), transparent 55%),
+    linear-gradient(165deg, #0b0c10 0%, #111218 48%, #0a0a0d 100%);
   background-attachment: fixed;
 }
 
@@ -29,5 +47,5 @@ body {
 }
 
 ::selection {
-  background: rgba(14, 159, 110, 0.18);
+  background: rgba(14, 159, 110, 0.22);
 }

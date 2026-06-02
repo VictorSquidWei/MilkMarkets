@@ -189,6 +189,8 @@ decide what to trade._
 - **AC-C1.6** _(Added post-approval)_ The home page **visually separates live markets from history**:
   open/locked markets appear in their category sections at the top; **resolved** markets are grouped
   under a distinct **"History"** section (final, no trading).
+- **AC-C1.7** _(Added post-approval)_ A market card the **viewer holds a position in** shows a
+  "You hold N YES/NO" indicator (Kalshi-style), flagging it before they open it.
 
 ### D. Market Detail & Trading
 
@@ -196,6 +198,11 @@ decide what to trade._
 - **AC-D1.1** The detail page shows the market title, status, current YES/NO prices, a **simple price
   line** (history), and **my current position** in this market (YES shares, NO shares).
 - **AC-D1.2** If the market is locked/resolved, trading controls are disabled and a badge explains why.
+- **AC-D1.3** _(Added post-approval)_ The price chart is **interactive**: a **labeled Y axis in cents
+  (0–100¢)** with gridlines, **time labels on the X axis**, and **hover shows a crosshair + tooltip**
+  with the price and time at that point. It adapts to the active theme.
+- **AC-D1.4** _(Added post-approval)_ If the viewer holds a position, a prominent **"Your position"**
+  banner shows shares held, current mark-to-market value, and **unrealized P&L** (colored).
 
 **US-D2 — Buy YES or NO.** _As a Player, I want to buy shares with a clear cost preview so I can bet._
 - **AC-D2.1** Given an **open** market, when I choose a side (YES/NO) and enter a quantity, then I see
@@ -359,6 +366,9 @@ markets to keep the History list tidy._
   create/resolve Joe) from the in-app admin panel with no redeploys.
 - **NFR-9 Cost.** Stays within Firebase Blaze free-tier-ish usage and Riot dev-key rate limits for a
   group this size.
+- **NFR-10 Theme** _(Added post-approval)_. The app supports **light and dark mode** with a toggle in
+  the nav, **defaults to the OS preference**, and **persists** the choice. The background uses a
+  colorful gradient that adapts per theme; there is no flash of the wrong theme on load.
 
 ---
 

@@ -1,14 +1,15 @@
 import type { Config } from 'tailwindcss';
 
-// Kalshi-like, milk-themed tokens: near-black ink on a matte cream backdrop,
-// white cards, green YES / red NO.
+// Kalshi-like, milk-themed, now with light/dark. `ink` (text/contrast) and `paper` (surface)
+// are driven by CSS variables so the whole app flips with the `.dark` class. yes/no/milk are fixed.
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        ink: '#0B0B0C',
-        paper: '#FFFFFF',
+        ink: 'rgb(var(--ink) / <alpha-value>)',
+        paper: 'rgb(var(--paper) / <alpha-value>)',
         milk: { 50: '#FBFAF7', 100: '#F4F2EB', 200: '#E9E5DA', 300: '#D8D3C5' },
         yes: { DEFAULT: '#0E9F6E', soft: '#E6F6EF', dark: '#0A7D56' },
         no: { DEFAULT: '#E5484D', soft: '#FCECEC', dark: '#C2353A' },
@@ -19,7 +20,7 @@ export default {
       },
       boxShadow: {
         card: '0 1px 2px rgba(16,17,20,0.04), 0 6px 20px -8px rgba(16,17,20,0.10)',
-        pop: '0 24px 60px -24px rgba(16,17,20,0.35)',
+        pop: '0 24px 60px -24px rgba(16,17,20,0.45)',
       },
     },
   },

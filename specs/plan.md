@@ -78,6 +78,31 @@ longer cached). Initial value: **Drogo400#NA1**.
 3. **Rules change:** `positions` and `trades` now allow `delete: if isAdmin()` (were `false`) to permit
    the cascade. Everything else unchanged. Redeployed.
 
+### D-0.6 — Theme system (light/dark) + interactive chart (post-approval)
+
+1. **Token-driven theming.** `tailwind.config.ts` uses `darkMode: 'class'`, and `ink`/`paper` are now
+   `rgb(var(--ink|--paper) / <alpha-value>)`. `index.css` sets the channel vars in `:root` (light) and
+   `.dark`. Because nearly every surface/text/border already uses `bg-paper` / `text-ink` / `*-ink/NN`,
+   the whole app flips with **no per-element churn**; only the colored tints (`yes/no` soft pills,
+   `milk` accents) and fixed scrims got targeted `dark:` variants. Modal overlays use fixed `bg-black/*`
+   (a scrim must stay dark in both themes), and saturated yes/no/gradient buttons use fixed `text-white`.
+2. **ThemeProvider** (`hooks/useTheme.tsx`): state persisted to `localStorage('mm_theme')`, defaults to
+   `prefers-color-scheme`, toggled from the nav (sun/moon). A tiny **inline script in `index.html`**
+   applies the `.dark` class before paint to avoid a flash.
+3. **Gradient backgrounds** set on `body` (and `.dark body`): a milky cream base with soft indigo+mint
+   blooms in light; a deep slate version in dark.
+4. **Interactive PriceChart** (`components/PriceChart.tsx`): dependency-free SVG with a labeled Y axis
+   (0–100¢ + gridlines), time labels on the X axis, and a hover crosshair + tooltip (nearest-point by
+   mouse x). Aspect-locked container so hover maps exactly; theme-aware via `currentColor`/`*-ink/NN`.
+
+### D-0.7 — Position indicators (Kalshi-style) (post-approval)
+
+`Home` passes each viewer's live position (from `usePositions`, filtered to shares > 0 & `!settled`)
+into `MarketCard`, which renders a "You hold N YES/NO" chip. `MarketDetail` shows a prominent
+**"Your position"** banner — shares held, current mark-to-market value, and **unrealized P&L**
+(`value − costBasis`, colored) — shown only for active (non-resolved) holdings. Pure display; no new
+data model or rules.
+
 ---
 
 ## 1. Architecture Overview

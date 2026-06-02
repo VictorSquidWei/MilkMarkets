@@ -1,9 +1,11 @@
 import { useMarkets } from '../hooks/useMarkets';
 import { useGames } from '../hooks/useGames';
 import { useTracked } from '../hooks/useTracked';
+import { useUser } from '../hooks/useUser';
+import { usePositions } from '../hooks/usePositions';
 import MarketCard from '../components/MarketCard';
 import Loading from '../components/Loading';
-import type { MarketCategory } from '../lib/types';
+import type { MarketCategory, Position } from '../lib/types';
 
 const LOL_ORDER: Record<string, number> = { lol_win: 0, lol_kda: 1, lol_cs: 2 };
 
@@ -20,7 +22,13 @@ export default function Home() {
   const { markets, loading } = useMarkets();
   const { games } = useGames();
   const tracked = useTracked();
+  const { user } = useUser();
+  const { positions } = usePositions(user?.uid);
   if (loading) return <Loading />;
+
+  const posByMarket = new Map<string, Position>(
+    positions.filter((p) => p.yesShares + p.noShares > 0 && !p.settled).map((p) => [p.marketId, p]),
+  );
 
   const latestGame = games[0];
   const activeGame = latestGame && latestGame.status !== 'resolved' ? latestGame : null;
@@ -53,7 +61,7 @@ export default function Home() {
       {lolMarkets.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {lolMarkets.map((m) => (
-            <MarketCard key={m.id} market={m} />
+            <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
           ))}
         </div>
       ) : (
@@ -64,7 +72,7 @@ export default function Home() {
       {joeActive.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {joeActive.map((m) => (
-            <MarketCard key={m.id} market={m} />
+            <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
           ))}
         </div>
       ) : (
@@ -76,7 +84,7 @@ export default function Home() {
           <SectionHeading title="History" sub="Resolved markets — final, no more trading" />
           <div className="grid gap-3 opacity-90 sm:grid-cols-2">
             {resolved.map((m) => (
-              <MarketCard key={m.id} market={m} />
+              <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
             ))}
           </div>
         </>

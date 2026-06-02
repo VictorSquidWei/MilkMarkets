@@ -12,6 +12,17 @@
       rel="stylesheet"
     />
     <title>Milk Market</title>
+    <script>
+      // Apply the saved/system theme before paint to avoid a flash of the wrong mode.
+      (function () {
+        try {
+          var t = localStorage.getItem('mm_theme');
+          if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

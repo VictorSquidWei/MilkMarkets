@@ -80,11 +80,11 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
     <div
       className={`rounded-2xl p-3 shadow-card ${
         accent
-          ? 'bg-gradient-to-br from-ink to-[#34343c] text-paper'
-          : 'border border-ink/[0.06] bg-white'
+          ? 'bg-gradient-to-br from-[#15161b] to-[#33343f] text-white ring-1 ring-white/10'
+          : 'border border-ink/[0.06] bg-paper'
       }`}
     >
-      <div className={`text-xs ${accent ? 'text-paper/60' : 'text-ink/50'}`}>{label}</div>
+      <div className={`text-xs ${accent ? 'text-white/60' : 'text-ink/50'}`}>{label}</div>
       <div className="tnum mt-0.5 text-lg font-bold">{value}</div>
     </div>
   );

@@ -520,14 +520,14 @@ function JoeCard() {
               <div className="text-sm font-medium">{m.title}</div>
               <div className="mt-2 flex gap-2">
                 <button
-                  className="flex-1 rounded-lg bg-yes py-1.5 text-sm font-semibold text-paper hover:bg-yes-dark disabled:opacity-40"
+                  className="flex-1 rounded-lg bg-yes py-1.5 text-sm font-semibold text-white hover:bg-yes-dark disabled:opacity-40"
                   disabled={busy === m.id}
                   onClick={() => run(m.id, () => resolveJoe(m.id, 'YES'))}
                 >
                   Resolve YES
                 </button>
                 <button
-                  className="flex-1 rounded-lg bg-no py-1.5 text-sm font-semibold text-paper hover:bg-no-dark disabled:opacity-40"
+                  className="flex-1 rounded-lg bg-no py-1.5 text-sm font-semibold text-white hover:bg-no-dark disabled:opacity-40"
                   disabled={busy === m.id}
                   onClick={() => run(m.id, () => resolveJoe(m.id, 'NO'))}
                 >
