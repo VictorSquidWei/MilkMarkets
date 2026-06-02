@@ -116,6 +116,14 @@ Frontend-only, no backend change (trades are already written per buy/sell and wo
 - **Collapsible History** on Home — `useState(false)` (collapsed by default) with a count + chevron.
 - **Probability bar** on `MarketCard` — a thin YES(green)/NO(red) split bar. Theme-aware throughout.
 
+### D-1.4 — Hide "Things Joe Says" from Joe (fairness, post-approval)
+
+The user named Joe shouldn't bet on what he himself will say. Client-side gate keyed on a new
+`JOE_DISPLAY_NAME` constant (`user.displayName === 'Joe'`): Home hides the Joe section + excludes joe
+from Joe's History; `Ticker` filters out joe-category trades for Joe; `MarketDetail` shows a "hidden
+from you" block instead of the trade UI if Joe opens a joe market by link. Consistent with C-7 (this is
+fairness among friends, not anti-cheat — not server-enforced). Frontend-only.
+
 ### D-1.3 — Futures markets + remove "Default LoL player" card (post-approval)
 
 Frontend-only; **reuses the Joe engine** (generic binary YES/NO, admin-set opening price, manual

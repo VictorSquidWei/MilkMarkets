@@ -9,6 +9,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import Loading from '../components/Loading';
 import { mtm } from '../lib/lmsr';
 import { CATEGORY_LABEL } from '../lib/labels';
+import { JOE_DISPLAY_NAME } from '../config/constants';
 import { formatCents, formatPct, formatShares, formatMilk, formatSignedMilk } from '../lib/money';
 
 export default function MarketDetail() {
@@ -19,6 +20,25 @@ export default function MarketDetail() {
 
   if (loading || !user) return <Loading />;
   if (!market) return <div className="p-2 text-sm text-ink/50">Market not found.</div>;
+
+  // Fairness: Joe can't view or trade "Things Joe Says" markets (he controls the outcome).
+  if (market.category === 'joe' && user.displayName === JOE_DISPLAY_NAME) {
+    return (
+      <div>
+        <Link to="/" className="inline-flex items-center gap-1 text-sm text-ink/50 hover:text-ink">
+          <ArrowLeft size={15} /> Markets
+        </Link>
+        <div className="mt-6 rounded-2xl border border-ink/10 bg-paper p-8 text-center shadow-card">
+          <div className="text-4xl">🤐</div>
+          <h1 className="mt-3 text-lg font-semibold tracking-tight">Hidden from you</h1>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-ink/60">
+            You can’t bet on “Things Joe Says” — it’s about you, so that wouldn’t be fair. Everything
+            else is fair game. 🥛
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const position = positions.find((p) => p.marketId === market.id) ?? null;
   const yes = market.priceYes;

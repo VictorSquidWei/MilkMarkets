@@ -9,6 +9,7 @@ import MarketCard from '../components/MarketCard';
 import Ticker from '../components/Ticker';
 import Loading from '../components/Loading';
 import type { Game, MarketCategory, Position } from '../lib/types';
+import { JOE_DISPLAY_NAME } from '../config/constants';
 
 const LOL_ORDER: Record<string, number> = { lol_win: 0, lol_kda: 1, lol_cs: 2 };
 
@@ -29,6 +30,8 @@ export default function Home() {
   const { positions } = usePositions(user?.uid);
   const [showHistory, setShowHistory] = useState(false);
   if (loading) return <Loading />;
+
+  const isJoe = user?.displayName === JOE_DISPLAY_NAME; // can't see "Things Joe Says" (fairness)
 
   const posByMarket = new Map<string, Position>(
     positions.filter((p) => p.yesShares + p.noShares > 0 && !p.settled).map((p) => [p.marketId, p]),
@@ -54,7 +57,9 @@ export default function Home() {
   const joeActive = markets.filter(
     (m) => m.category === ('joe' as MarketCategory) && m.status !== 'resolved',
   );
-  const resolved = markets.filter((m) => m.status === 'resolved'); // newest-first (createdAt desc)
+  const resolved = markets.filter(
+    (m) => m.status === 'resolved' && !(isJoe && m.category === 'joe'),
+  ); // newest-first (createdAt desc)
 
   return (
     <div>
@@ -93,15 +98,19 @@ export default function Home() {
         <EmptyCard text="No live futures right now." />
       )}
 
-      <SectionHeading title="Things Joe Says" />
-      {joeActive.length ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {joeActive.map((m) => (
-            <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
-          ))}
-        </div>
-      ) : (
-        <EmptyCard text="No live Joe market right now." />
+      {!isJoe && (
+        <>
+          <SectionHeading title="Things Joe Says" />
+          {joeActive.length ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {joeActive.map((m) => (
+                <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
+              ))}
+            </div>
+          ) : (
+            <EmptyCard text="No live Joe market right now." />
+          )}
+        </>
       )}
 
       {resolved.length > 0 && (

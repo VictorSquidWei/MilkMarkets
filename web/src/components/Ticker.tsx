@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useRecentTrades } from '../hooks/useRecentTrades';
 import { useAllUsers } from '../hooks/useAllUsers';
 import { useMarkets } from '../hooks/useMarkets';
+import { useUser } from '../hooks/useUser';
+import { JOE_DISPLAY_NAME } from '../config/constants';
 import { formatCents, formatMilk, formatShares } from '../lib/money';
 
 interface TickerItem {
@@ -41,11 +43,16 @@ export default function Ticker() {
   const trades = useRecentTrades(25);
   const { users } = useAllUsers();
   const { markets } = useMarkets();
+  const { user } = useUser();
+  const isJoe = user?.displayName === JOE_DISPLAY_NAME; // fairness: hide Joe-market activity from Joe
 
   const items = useMemo<TickerItem[]>(() => {
     const nameByUid = new Map(users.map((u) => [u.uid, u.displayName]));
     const titleById = new Map(markets.map((m) => [m.id, m.title]));
-    return trades.map((t) => ({
+    const catById = new Map(markets.map((m) => [m.id, m.category]));
+    return trades
+      .filter((t) => !(isJoe && catById.get(t.marketId) === 'joe'))
+      .map((t) => ({
       id: t.id,
       name: nameByUid.get(t.uid) ?? '—',
       action: t.action,
@@ -55,7 +62,7 @@ export default function Ticker() {
       amount: t.cost,
       title: titleById.get(t.marketId) ?? 'market',
     }));
-  }, [trades, users, markets]);
+  }, [trades, users, markets, isJoe]);
 
   // Pace scales with count so it stays a calm crawl whether there are 3 trades or 25.
   const durationSec = Math.max(items.length, 6) * SECONDS_PER_ITEM;

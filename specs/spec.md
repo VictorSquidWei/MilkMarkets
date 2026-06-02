@@ -308,6 +308,10 @@ the actual match._
   allowed; there is no duplicate restriction.
 - **AC-H1.4** _(Added post-approval)_ When creating, I set the **starting YES price (1–99¢)**. The
   market opens at that price and **still moves via LMSR** as people trade (BR-4). Default 50¢.
+- **AC-H1.5** _(Added post-approval — fairness)_ The user named **Joe cannot see or trade "Things Joe
+  Says" markets** (he controls the outcome). They're hidden from his home section, his History, and his
+  live ticker, and the market-detail page is blocked for him. Client-side (consistent with C-7 — fairness
+  among friends, not anti-cheat). Identity via `JOE_DISPLAY_NAME` constant.
 
 **US-H2 — Resolve Joe market.** _As Admin, I want to manually resolve a Joe market YES or NO._
 - **AC-H2.1** When I pick YES or NO and confirm, the market resolves to that outcome and payouts apply

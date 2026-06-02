@@ -42,6 +42,7 @@ export type DisplayName = (typeof USERS)[number];
 
 export const EMAIL_DOMAIN = 'milkmarket.local'; // throwaway emails (spec identity)
 export const ADMIN_DISPLAY_NAME: DisplayName = 'Victor'; // gets isAdmin via the seed script
+export const JOE_DISPLAY_NAME: DisplayName = 'Joe'; // can't see/bet "Things Joe Says" (fairness)
 
 /** Deterministic throwaway email for a display name, e.g. "Jacob" -> "jacob@milkmarket.local". */
 export const emailFor = (displayName: string): string =>
