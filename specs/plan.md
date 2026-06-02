@@ -103,6 +103,13 @@ into `MarketCard`, which renders a "You hold N YES/NO" chip. `MarketDetail` show
 (`value − costBasis`, colored) — shown only for active (non-resolved) holdings. Pure display; no new
 data model or rules.
 
+### D-0.8 — Portfolio: average buy price (post-approval)
+
+Each open-position row on the Portfolio page now shows **"Bought X¢"** = `costBasis / (yesShares +
+noShares) × 100` (for the common one-sided position this is exactly the entry price; after partial
+sells it's the cost basis of the remaining shares), alongside the current side price and unrealized
+P&L. Derived from the existing `costBasis` field — no schema change. Theme-aware pills.
+
 ---
 
 ## 1. Architecture Overview

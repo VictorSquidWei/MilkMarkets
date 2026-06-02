@@ -232,6 +232,8 @@ decide what to trade._
 - **AC-E1.2** It lists my **open positions**, each with shares held and current **mark-to-market value**.
 - **AC-E1.3** It shows my **total bankroll = cash + MTM of open positions**.
 - **AC-E1.4** Values update to reflect trades and price movements (on refresh/return at minimum).
+- **AC-E1.5** _(Added post-approval)_ Each open position shows the **average price paid** ("Bought X¢" =
+  cost basis ÷ shares), the **current price**, and **unrealized P&L**. Visible and theme-aware.
 
 ### F. Leaderboard
 

@@ -3,7 +3,7 @@ import { useUser } from '../hooks/useUser';
 import { usePositions } from '../hooks/usePositions';
 import { useMarkets } from '../hooks/useMarkets';
 import { mtm } from '../lib/lmsr';
-import { formatMilk, formatShares, formatCents } from '../lib/money';
+import { formatMilk, formatShares, formatCents, formatSignedMilk } from '../lib/money';
 import { CATEGORY_LABEL } from '../lib/labels';
 import Loading from '../components/Loading';
 
@@ -40,28 +40,49 @@ export default function Portfolio() {
         <div className="space-y-2">
           {open.map(({ p, m }) => {
             const value = mtm(p.yesShares, p.noShares, m.priceYes / 100);
+            const totalShares = p.yesShares + p.noShares;
+            const avgCents = totalShares > 0 ? (p.costBasis / totalShares) * 100 : 0;
+            const onlyNo = p.noShares > 0 && p.yesShares === 0;
+            const nowCents = onlyNo ? 100 - m.priceYes : m.priceYes;
+            const pnl = value - p.costBasis;
             return (
               <Link
                 key={p.id}
                 to={`/market/${m.id}`}
-                className="flex items-center justify-between rounded-2xl border border-ink/10 bg-paper p-4 shadow-card hover:border-ink/25"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-paper p-4 shadow-card transition hover:border-ink/25 hover:shadow-pop"
               >
                 <div className="min-w-0">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-ink/40">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-ink/40">
                     {CATEGORY_LABEL[m.category]}
                   </div>
                   <div className="truncate font-medium">{m.title}</div>
-                  <div className="mt-0.5 text-xs text-ink/50">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
                     {p.yesShares > 0 && (
-                      <span className="text-yes-dark">{formatShares(p.yesShares)} YES </span>
+                      <span className="rounded-md bg-yes-soft px-1.5 py-0.5 font-semibold text-yes-dark dark:bg-yes/15 dark:text-yes">
+                        {formatShares(p.yesShares)} YES
+                      </span>
                     )}
                     {p.noShares > 0 && (
-                      <span className="text-no-dark">{formatShares(p.noShares)} NO </span>
+                      <span className="rounded-md bg-no-soft px-1.5 py-0.5 font-semibold text-no-dark dark:bg-no/15 dark:text-no">
+                        {formatShares(p.noShares)} NO
+                      </span>
                     )}
-                    · YES {formatCents(m.priceYes)}
+                    <span className="rounded-md bg-ink/[0.06] px-1.5 py-0.5 font-medium text-ink/70">
+                      Bought {formatCents(avgCents)}
+                    </span>
+                    <span className="text-ink/45">now {formatCents(nowCents)}</span>
                   </div>
                 </div>
-                <div className="tnum shrink-0 text-right font-semibold">{formatMilk(value)}</div>
+                <div className="shrink-0 text-right">
+                  <div className="tnum font-semibold">{formatMilk(value)}</div>
+                  <div
+                    className={`tnum text-xs font-medium ${
+                      pnl >= 0 ? 'text-yes-dark dark:text-yes' : 'text-no-dark dark:text-no'
+                    }`}
+                  >
+                    {formatSignedMilk(pnl)}
+                  </div>
+                </div>
               </Link>
             );
           })}
