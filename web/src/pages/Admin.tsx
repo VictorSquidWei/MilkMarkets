@@ -9,12 +9,16 @@ import type { ComputeLinesResult, ResolveLatestResult } from '../lib/riot';
 import {
   openGame,
   lockGame,
+  lockMarket,
+  unlockMarket,
   resolveGame,
   createJoe,
   resolveJoe,
   deleteGameCascade,
   deleteMarketCascade,
+  MAX_ACTIVE_GAMES,
 } from '../lib/markets';
+import type { Game, Market } from '../lib/types';
 import { dayPST, formatPSTDate } from '../lib/time';
 import { formatCents } from '../lib/money';
 
@@ -96,8 +100,6 @@ function RiotKeyCard() {
 
 function TrackedPlayerCard() {
   const tracked = useTracked();
-  const { games } = useGames();
-  const activeGame = games.find((g) => g.status !== 'resolved') ?? null;
   const [ign, setIgn] = useState('');
   const [tag, setTag] = useState('');
   const [busy, setBusy] = useState(false);
@@ -116,7 +118,7 @@ function TrackedPlayerCard() {
     setErr('');
     try {
       await setDoc(doc(db, 'meta', 'tracked'), { gameName: g, tagLine: t }, { merge: true });
-      setMsg(`Now tracking ${g}#${t}. The next "Open new game" uses this account.`);
+      setMsg(`Default set to ${g}#${t}.`);
       setIgn('');
       setTag('');
     } catch {
@@ -127,41 +129,35 @@ function TrackedPlayerCard() {
   }
 
   return (
-    <Card title="Tracked LoL player">
+    <Card title="Default LoL player">
       <p className="text-sm text-ink/60">
-        Currently tracking{' '}
+        Default{' '}
         <b>
           {tracked.gameName}#{tracked.tagLine}
-        </b>
-        .
+        </b>{' '}
+        — pre-fills the “open game” form below. Each game stores its own player, so changing this won’t
+        affect games already running.
       </p>
-      {activeGame ? (
-        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Resolve the current LoL game before switching players — its markets are tied to{' '}
-          {tracked.gameName}.
-        </p>
-      ) : (
-        <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex gap-2">
+        <input
+          value={ign}
+          onChange={(e) => setIgn(e.target.value)}
+          placeholder={tracked.gameName}
+          className="min-w-0 flex-1 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ink/40"
+        />
+        <div className="flex items-center rounded-xl border border-ink/15 px-2 focus-within:border-ink/40">
+          <span className="text-sm text-ink/40">#</span>
           <input
-            value={ign}
-            onChange={(e) => setIgn(e.target.value)}
-            placeholder={tracked.gameName}
-            className="flex-1 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ink/40"
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            placeholder={tracked.tagLine}
+            className="w-16 py-2 text-sm outline-none"
           />
-          <div className="flex items-center rounded-xl border border-ink/15 px-2 focus-within:border-ink/40">
-            <span className="text-sm text-ink/40">#</span>
-            <input
-              value={tag}
-              onChange={(e) => setTag(e.target.value)}
-              placeholder={tracked.tagLine}
-              className="w-16 py-2 text-sm outline-none"
-            />
-          </div>
-          <button className={btn} disabled={busy || !ign.trim() || !tag.trim()} onClick={save}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
         </div>
-      )}
+        <button className={btn} disabled={busy || !ign.trim() || !tag.trim()} onClick={save}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+      </div>
       {msg && <p className="mt-2 text-sm text-yes-dark">{msg}</p>}
       {err && <p className="mt-2 text-sm text-no">{err}</p>}
     </Card>
@@ -194,17 +190,159 @@ function MarketToggle({
   );
 }
 
+const MARKET_RANK: Record<string, number> = { lol_win: 0, lol_kda: 1, lol_cs: 2, joe: 3 };
+
 function LolGameCard() {
   const { games } = useGames();
   const { markets } = useMarkets();
-  const tracked = useTracked();
-  const active = games.find((g) => g.status !== 'resolved') ?? null;
-  const gameMarkets = active ? markets.filter((m) => m.gameId === active.gameId) : [];
+  const activeGames = games.filter((g) => g.status !== 'resolved'); // newest-first
+  const canOpen = activeGames.length < MAX_ACTIVE_GAMES;
 
+  return (
+    <Card title="League of Legends games">
+      <p className="text-sm text-ink/50">
+        {activeGames.length}/{MAX_ACTIVE_GAMES} games active. Type a player’s Riot ID to open a new one.
+      </p>
+
+      {canOpen ? (
+        <OpenGameForm />
+      ) : (
+        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+          Max {MAX_ACTIVE_GAMES} games running — resolve one to open another.
+        </p>
+      )}
+
+      {activeGames.length > 0 && (
+        <div className="mt-4 space-y-3">
+          {activeGames.map((g) => (
+            <ActiveGameRow
+              key={g.gameId}
+              game={g}
+              markets={markets
+                .filter((m) => m.gameId === g.gameId)
+                .sort((a, b) => MARKET_RANK[a.category] - MARKET_RANK[b.category])}
+            />
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function OpenGameForm() {
+  const tracked = useTracked();
+  const [ign, setIgn] = useState('');
+  const [tag, setTag] = useState('');
   const [lines, setLines] = useState<ComputeLinesResult | null>(null);
   const [sel, setSel] = useState({ win: true, kda: true, cs: true });
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+
+  const run = async (tagName: string, fn: () => Promise<void>) => {
+    setBusy(tagName);
+    setMsg('');
+    setErr('');
+    try {
+      await fn();
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const player = { gameName: ign.trim(), tagLine: tag.trim().replace(/^#/, '') };
+  const hasId = !!player.gameName && !!player.tagLine;
+  const reset = () => {
+    setLines(null);
+    setSel({ win: true, kda: true, cs: true });
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-ink/10 p-3">
+      {!lines ? (
+        <>
+          <div className="flex gap-2">
+            <input
+              value={ign}
+              onChange={(e) => setIgn(e.target.value)}
+              placeholder={`Riot name (e.g. ${tracked.gameName})`}
+              className="min-w-0 flex-1 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ink/40"
+            />
+            <div className="flex items-center rounded-xl border border-ink/15 px-2 focus-within:border-ink/40">
+              <span className="text-sm text-ink/40">#</span>
+              <input
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                placeholder={tracked.tagLine}
+                className="w-16 py-2 text-sm outline-none"
+              />
+            </div>
+            <button
+              className={btn}
+              disabled={busy === 'lines' || !hasId}
+              onClick={() => run('lines', async () => setLines(await computeLines(player)))}
+            >
+              {busy === 'lines' ? 'Fetching…' : 'Fetch lines'}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-ink/45">Enter the Riot ID of the player for this game.</p>
+        </>
+      ) : (
+        <>
+          <p className="text-sm">
+            <b>
+              {player.gameName}#{player.tagLine}
+            </b>{' '}
+            · from <b>{lines.sampleSize}</b> games · KDA <b>{lines.kdaLine}</b> · CS/min{' '}
+            <b>{lines.csLine}</b>
+          </p>
+          <div className="mt-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-ink/45">
+              Markets to create
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              <MarketToggle label="Win / Loss" checked={sel.win} onChange={(v) => setSel((s) => ({ ...s, win: v }))} />
+              <MarketToggle label={`KDA o/u ${lines.kdaLine}`} checked={sel.kda} onChange={(v) => setSel((s) => ({ ...s, kda: v }))} />
+              <MarketToggle label={`CS/min o/u ${lines.csLine}`} checked={sel.cs} onChange={(v) => setSel((s) => ({ ...s, cs: v }))} />
+            </div>
+            <p className="mt-1.5 text-xs text-ink/45">
+              Tip: skip CS/min for supports & junglers — role autofill makes it misleading.
+            </p>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button
+              className={btn}
+              disabled={busy === 'create' || (!sel.win && !sel.kda && !sel.cs)}
+              onClick={() =>
+                run('create', async () => {
+                  const count = [sel.win, sel.kda, sel.cs].filter(Boolean).length;
+                  await openGame(player, { kdaLine: lines.kdaLine, csLine: lines.csLine }, lines.baselineMatchId, sel);
+                  setIgn('');
+                  setTag('');
+                  reset();
+                  setMsg(`Opened ${player.gameName} — ${count} market${count > 1 ? 's' : ''} live.`);
+                })
+              }
+            >
+              {busy === 'create' ? 'Creating…' : 'Create markets'}
+            </button>
+            <button className={btnGhost} onClick={reset}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+      {msg && <p className="mt-2 text-sm text-yes-dark">{msg}</p>}
+      {err && <p className="mt-2 text-sm text-no">{err}</p>}
+    </div>
+  );
+}
+
+function ActiveGameRow({ game, markets }: { game: Game; markets: Market[] }) {
   const [resolveInfo, setResolveInfo] = useState<ResolveLatestResult | null>(null);
-  const [busy, setBusy] = useState<string>('');
+  const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
@@ -221,188 +359,121 @@ function LolGameCard() {
     }
   };
 
+  const label = game.player ? `${game.player.gameName}#${game.player.tagLine}` : 'Tracked player';
+  const anyOpen = markets.some((m) => m.status === 'open');
+
   return (
-    <Card title="League of Legends game">
-      {!active && (
-        <>
-          {!lines ? (
-            <>
-              <p className="text-sm text-ink/50">
-                Fetches {tracked.gameName}#{tracked.tagLine}’s last 10 ranked games and computes the KDA
-                &amp; CS/min lines.
-              </p>
-              <button
-                className={`${btn} mt-3`}
-                disabled={busy === 'lines'}
-                onClick={() => run('lines', async () => setLines(await computeLines()))}
-              >
-                {busy === 'lines' ? 'Fetching…' : 'Fetch lines for a new game'}
-              </button>
-            </>
-          ) : (
-            <div className="rounded-xl bg-ink/[0.03] p-3">
-              <p className="text-sm">
-                From <b>{lines.sampleSize}</b> ranked games · KDA line <b>{lines.kdaLine}</b> · CS/min
-                line <b>{lines.csLine}</b>
-              </p>
-              <div className="mt-3">
-                <div className="text-xs font-semibold uppercase tracking-wider text-ink/45">
-                  Markets to create
-                </div>
-                <div className="mt-1.5 flex flex-wrap gap-2">
-                  <MarketToggle
-                    label="Win / Loss"
-                    checked={sel.win}
-                    onChange={(v) => setSel((s) => ({ ...s, win: v }))}
-                  />
-                  <MarketToggle
-                    label={`KDA o/u ${lines.kdaLine}`}
-                    checked={sel.kda}
-                    onChange={(v) => setSel((s) => ({ ...s, kda: v }))}
-                  />
-                  <MarketToggle
-                    label={`CS/min o/u ${lines.csLine}`}
-                    checked={sel.cs}
-                    onChange={(v) => setSel((s) => ({ ...s, cs: v }))}
-                  />
-                </div>
-                <p className="mt-1.5 text-xs text-ink/45">
-                  Tip: skip CS/min for supports & junglers — role autofill makes it misleading.
-                </p>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  className={btn}
-                  disabled={busy === 'create' || (!sel.win && !sel.kda && !sel.cs)}
-                  onClick={() =>
-                    run('create', async () => {
-                      const count = [sel.win, sel.kda, sel.cs].filter(Boolean).length;
-                      await openGame(
-                        { kdaLine: lines.kdaLine, csLine: lines.csLine },
-                        lines.baselineMatchId,
-                        sel,
-                      );
-                      setLines(null);
-                      setSel({ win: true, kda: true, cs: true });
-                      setMsg(`Game opened — ${count} market${count > 1 ? 's' : ''} live.`);
-                    })
-                  }
-                >
-                  {busy === 'create' ? 'Creating…' : 'Create markets'}
-                </button>
-                <button
-                  className={btnGhost}
-                  onClick={() => {
-                    setLines(null);
-                    setSel({ win: true, kda: true, cs: true });
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {active && active.status === 'open' && (
-        <>
-          <p className="text-sm text-ink/60">
-            Game open — KDA over <b>{active.kdaLine}</b>, CS/min over <b>{active.csLine}</b>.
-          </p>
-          <ul className="mt-2 space-y-1 text-sm">
-            {gameMarkets.map((m) => (
-              <li key={m.id} className="flex justify-between">
-                <span className="text-ink/70">{m.title}</span>
-                <span className="tnum">YES {formatCents(m.priceYes)}</span>
-              </li>
-            ))}
-          </ul>
+    <div className="rounded-xl border border-ink/10 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="truncate font-semibold">{label}</div>
+        {anyOpen ? (
           <button
-            className={`${btnGhost} mt-3`}
-            disabled={busy === 'lock'}
-            onClick={() => run('lock', () => lockGame(active))}
+            className="shrink-0 rounded-lg border border-ink/15 px-2 py-1 text-xs font-semibold text-ink/70 hover:border-ink/40 disabled:opacity-40"
+            disabled={busy === 'lockall'}
+            onClick={() => run('lockall', () => lockGame(game))}
           >
-            {busy === 'lock' ? 'Locking…' : 'Lock trading'}
+            {busy === 'lockall' ? 'Locking…' : 'Lock all'}
           </button>
-        </>
-      )}
+        ) : (
+          <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
+            All locked
+          </span>
+        )}
+      </div>
 
-      {active && active.status === 'locked' && (
-        <>
-          <p className="text-sm text-ink/60">Game locked. Fetch the result once the game finishes.</p>
-          {!resolveInfo ? (
-            <button
-              className={`${btn} mt-3`}
-              disabled={busy === 'fetch'}
-              onClick={() => run('fetch', async () => setResolveInfo(await resolveLatest(active.baselineMatchId)))}
-            >
-              {busy === 'fetch' ? 'Fetching…' : 'Fetch latest result'}
-            </button>
-          ) : !resolveInfo.newGame ? (
-            <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-              No new game found since this market opened. Wait for the game to finish, then fetch again.
-              <div className="mt-2">
-                <button className={btnGhost} onClick={() => setResolveInfo(null)}>
-                  Dismiss
-                </button>
-              </div>
+      <ul className="mt-2 space-y-1.5 text-sm">
+        {markets.map((m) => (
+          <li key={m.id} className="flex items-center justify-between gap-2">
+            <span className="min-w-0 flex-1 truncate text-ink/70">{m.title}</span>
+            <span className="tnum shrink-0 text-ink/45">{formatCents(m.priceYes)}</span>
+            {m.status === 'locked' && (
+              <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
+                Locked
+              </span>
+            )}
+            {m.status !== 'resolved' && (
+              <button
+                className="shrink-0 rounded-lg border border-ink/15 px-2 py-0.5 text-xs font-semibold text-ink/70 hover:border-ink/40 disabled:opacity-40"
+                disabled={busy === `m_${m.id}`}
+                onClick={() =>
+                  run(`m_${m.id}`, () => (m.status === 'open' ? lockMarket(m.id) : unlockMarket(m.id)))
+                }
+              >
+                {busy === `m_${m.id}` ? '…' : m.status === 'open' ? 'Lock' : 'Unlock'}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-3 border-t border-ink/[0.06] pt-3">
+        {!resolveInfo ? (
+          <button
+            className={btn}
+            disabled={busy === 'fetch'}
+            onClick={() => run('fetch', async () => setResolveInfo(await resolveLatest(game.player, game.baselineMatchId)))}
+          >
+            {busy === 'fetch' ? 'Fetching…' : 'Fetch result & resolve'}
+          </button>
+        ) : !resolveInfo.newGame ? (
+          <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+            No new game found since this market opened. Wait for the game to finish, then fetch again.
+            <div className="mt-2">
+              <button className={btnGhost} onClick={() => setResolveInfo(null)}>
+                Dismiss
+              </button>
             </div>
-          ) : (
-            <div className="mt-3 rounded-xl bg-ink/[0.03] p-3 text-sm">
-              {resolveInfo.remake && (
-                <p className="mb-2 rounded-lg bg-amber-100 px-2 py-1 text-amber-800">
-                  ⚠ This looks like a remake/short game ({Math.round((resolveInfo.gameDuration ?? 0) / 60)} min). It
-                  will still resolve as-is.
-                </p>
-              )}
-              {active.marketIds.win && (
-                <Outcome
-                  label="Win"
-                  value={resolveInfo.win ? 'Won' : 'Lost'}
-                  outcome={resolveInfo.win ? 'YES' : 'NO'}
-                />
-              )}
-              {active.marketIds.kda && (
-                <Outcome
-                  label={`KDA ${resolveInfo.kda?.toFixed(2)} vs ${active.kdaLine}`}
-                  value={resolveInfo.kda! > active.kdaLine ? 'Over' : 'Under'}
-                  outcome={resolveInfo.kda! > active.kdaLine ? 'YES' : 'NO'}
-                />
-              )}
-              {active.marketIds.cs && (
-                <Outcome
-                  label={`CS/min ${resolveInfo.csPerMin?.toFixed(2)} vs ${active.csLine}`}
-                  value={resolveInfo.csPerMin! > active.csLine ? 'Over' : 'Under'}
-                  outcome={resolveInfo.csPerMin! > active.csLine ? 'YES' : 'NO'}
-                />
-              )}
-              <div className="mt-3 flex gap-2">
-                <button
-                  className={btn}
-                  disabled={busy === 'confirm'}
-                  onClick={() =>
-                    run('confirm', async () => {
-                      await resolveGame(active, resolveInfo);
-                      setResolveInfo(null);
-                      setMsg('Game resolved and payouts applied.');
-                    })
-                  }
-                >
-                  {busy === 'confirm' ? 'Resolving…' : 'Confirm & pay out'}
-                </button>
-                <button className={btnGhost} onClick={() => setResolveInfo(null)}>
-                  Cancel
-                </button>
-              </div>
+          </div>
+        ) : (
+          <div className="mt-3 rounded-xl bg-ink/[0.03] p-3 text-sm">
+            {resolveInfo.remake && (
+              <p className="mb-2 rounded-lg bg-amber-100 px-2 py-1 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+                ⚠ Looks like a remake/short game ({Math.round((resolveInfo.gameDuration ?? 0) / 60)} min). It
+                will still resolve as-is.
+              </p>
+            )}
+            {game.marketIds.win && (
+              <Outcome label="Win" value={resolveInfo.win ? 'Won' : 'Lost'} outcome={resolveInfo.win ? 'YES' : 'NO'} />
+            )}
+            {game.marketIds.kda && (
+              <Outcome
+                label={`KDA ${resolveInfo.kda?.toFixed(2)} vs ${game.kdaLine}`}
+                value={resolveInfo.kda! > game.kdaLine ? 'Over' : 'Under'}
+                outcome={resolveInfo.kda! > game.kdaLine ? 'YES' : 'NO'}
+              />
+            )}
+            {game.marketIds.cs && (
+              <Outcome
+                label={`CS/min ${resolveInfo.csPerMin?.toFixed(2)} vs ${game.csLine}`}
+                value={resolveInfo.csPerMin! > game.csLine ? 'Over' : 'Under'}
+                outcome={resolveInfo.csPerMin! > game.csLine ? 'YES' : 'NO'}
+              />
+            )}
+            <div className="mt-3 flex gap-2">
+              <button
+                className={btn}
+                disabled={busy === 'confirm'}
+                onClick={() =>
+                  run('confirm', async () => {
+                    await resolveGame(game, resolveInfo);
+                    setResolveInfo(null);
+                    setMsg('Game resolved and payouts applied.');
+                  })
+                }
+              >
+                {busy === 'confirm' ? 'Resolving…' : 'Confirm & pay out'}
+              </button>
+              <button className={btnGhost} onClick={() => setResolveInfo(null)}>
+                Cancel
+              </button>
             </div>
-          )}
-        </>
-      )}
+          </div>
+        )}
+      </div>
 
       {msg && <p className="mt-2 text-sm text-yes-dark">{msg}</p>}
       {err && <p className="mt-2 text-sm text-no">{err}</p>}
-    </Card>
+    </div>
   );
 }
 

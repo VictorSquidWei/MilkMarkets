@@ -103,6 +103,44 @@ into `MarketCard`, which renders a "You hold N YES/NO" chip. `MarketDetail` show
 (`value − costBasis`, colored) — shown only for active (non-resolved) holdings. Pure display; no new
 data model or rules.
 
+### D-1.1 — Per-market lock / unlock (post-approval)
+
+`lockMarket(id)` / `unlockMarket(id)` flip a single market's `status` between `locked` and `open`
+(`lockGame` is kept as a "lock all" convenience but no longer touches the game's lifecycle). The
+trading engine already gates per-market on `status === 'open'`, and the security rules already let an
+admin change a market's `status`, so this needed **no schema/rules/function/trading change** — just the
+helpers + an admin UI with a per-market Lock/Unlock toggle. Game lifecycle (`game.status`) is now
+decoupled from locking: a game is `open` (active) until `resolved`, regardless of which markets are
+locked; resolve is available any time. Frontend-only.
+
+### D-1.0 — Multiple players' live games + more admins (post-approval)
+
+**Decisions:** one active game per player; **max 3 concurrent games** (`MAX_ACTIVE_GAMES`); type the
+Riot ID each time (no roster); player names in market titles.
+
+- **Data:** `GameDoc.player = {gameName, tagLine}` (optional; old games fall back to `meta/tracked`).
+- **Function:** `riotProxy` now takes a `player` in the request and resolves *that* puuid; falls back to
+  `meta/tracked` when absent (back-compat). **Needs a function redeploy.**
+- **`riot.ts`:** `computeLines(player)`, `resolveLatest(player, baselineMatchId)`.
+- **`markets.ts`:** `openGame(player, lines, baselineMatchId, selection)` — enforces the 3-game cap and
+  one-active-game-per-player, stamps `player` on the game, and prefixes KDA/CS titles with the name.
+- **Admin:** the LoL card is now a container — an `OpenGameForm` (type Riot ID → fetch lines → market
+  toggles → create, hidden once 3 are active) plus an `ActiveGameRow` per active game (each with its own
+  lock / fetch-result / resolve, scoped state).
+- **Home:** a `League of Legends · {Riot ID}` section per active game.
+- **Admins:** `isAdmin` granted to Nick & Nate via `scripts/set-admin.mjs` (server-side; the flag stays
+  client-immutable). Full admin (no granular roles).
+- **Unchanged:** LMSR, trades, balances, resolution/payouts, leaderboard, security-rule model.
+- **`meta/tracked` is now just a default** (pre-fills the open-game form + fallback when a game has no
+  `player`). The admin "Default LoL player" card is editable any time — it does **not** affect games
+  already running (each carries its own `player`).
+- **Audit fixes (independent review before deploy):** (a) the tracked-player card no longer blocks on an
+  active game (obsolete under multi-player); (b) `scripts/backfill-game-player.mjs` stamps `player` onto
+  any pre-existing active game so it never resolves against a since-changed default (ran: 0 to migrate);
+  (c) **known limitation** — `openGame`'s cap/one-per-player check is read-then-write (not a txn, since
+  Firestore client txns can't query); the create button is disabled while in-flight, so the realistic
+  risk is two admins opening at the exact same instant. Acceptable for an admin tool.
+
 ### D-0.9 — Selectable LoL markets + de-"Milk Lord" (post-approval)
 
 `openGame(lines, baselineMatchId, selection)` takes a `{win, kda, cs}` selection and creates only the

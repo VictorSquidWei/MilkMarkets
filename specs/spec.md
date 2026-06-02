@@ -49,7 +49,7 @@ they are not themselves user stories):
 | Term | Meaning |
 |---|---|
 | **Player** | A logged-in friend (one of 11). Can browse, trade, and view leaderboard/portfolio. |
-| **Admin** | Exactly one account (me, "Victor"), flagged `isAdmin`. Can also act as a Player. |
+| **Admin** | One or more accounts flagged `isAdmin` (Victor, Nick, Nate). Can also act as Players. |
 | **Market** | A binary YES/NO question with a price in cents. One of four categories. |
 | **YES price** | The market's current cents price for the YES outcome; read as the crowd's % chance of YES. |
 | **NO price** | `≈ 100¢ − YES price`. Buying NO is betting against. |
@@ -72,8 +72,11 @@ they are not themselves user stories):
 
 - **Player** — all 11 friends, including me. Default capabilities: log in, read markets/leaderboard,
   trade in open markets, view own portfolio, view onboarding.
-- **Admin** — me only. A superset of Player. Adds: rotate Riot key, open/lock/resolve LoL games,
-  create/resolve Joe markets. Admin-only actions are gated **both** in the UI **and** server-side.
+- **Admin** — one or more designated accounts (Victor, plus **Nick & Nate** as of post-approval, to
+  cover when Victor is away). A superset of Player. Adds: rotate Riot key, open/lock/resolve/**delete**
+  LoL games, create/resolve Joe markets, set the tracked player(s). Admin-only actions are gated
+  **both** in the UI **and** server-side. Admin is the `isAdmin` flag, which is **client-immutable** and
+  granted server-side only (seed or `scripts/set-admin.mjs`).
 
 There is **no self-signup** and **no public/anonymous role** — every actor is a pre-created,
 logged-in user.
@@ -258,13 +261,21 @@ auto-computed lines._
 - **AC-G1.3a** _(Added post-approval)_ The admin **selects which of the three** to create (each
   toggleable; at least one required). CS/min is commonly skipped for support/jungle players where
   role-autofill makes CS/min misleading. Lock/resolve/delete operate on whichever markets exist.
+- **AC-G1.3b** _(Added post-approval — multi-player)_ Each game is for a specific player whose **Riot ID
+  the admin types** when opening (no roster). Up to **3 games run concurrently**, at most **one active
+  game per player**. Market titles include the player's name so cards stay unambiguous. Markets home
+  shows **one section per active game**, headed by that player's Riot ID; resolve uses that game's player.
 - **AC-G1.4** The created markets appear on the Markets home immediately.
 - **AC-G1.5** Whether opening a new game is allowed while a prior game is still unresolved is
   [OQ-11](#oq-11).
 
-**US-G2 — Lock a game.** _As Admin, I want to stop trading before the result is known._
-- **AC-G2.1** Given an open LoL game, when I click **Lock**, then its three markets become **locked**
-  and reject all trades, while remaining visible.
+**US-G2 — Lock / unlock markets.** _As Admin, I want to stop and resume trading per market._
+- **AC-G2.1** _(Revised post-approval)_ Each market in a game can be **locked individually** (stops just
+  that market's trading) and **unlocked** (resumes it), independently of the others. A **"Lock all"**
+  convenience locks every currently-open market of a game at once.
+- **AC-G2.2** Locking/unlocking one market doesn't affect the others or the game's lifecycle — the game
+  stays active until resolved, and resolution is available regardless of per-market lock state. Locked
+  markets stay visible and badged, and reject trades (BR-13).
 
 **US-G3 — Resolve the latest game.** _As Admin, I want to resolve the three markets automatically from
 the actual match._

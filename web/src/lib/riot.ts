@@ -41,10 +41,15 @@ export class RiotError extends Error {
   }
 }
 
-const riotProxy = httpsCallable<{ action: string; baselineMatchId?: string }, unknown>(
-  functions,
-  'riotProxy',
-);
+export interface RiotPlayer {
+  gameName: string;
+  tagLine: string;
+}
+
+const riotProxy = httpsCallable<
+  { action: string; player?: RiotPlayer; baselineMatchId?: string },
+  unknown
+>(functions, 'riotProxy');
 
 function mapError(e: unknown): never {
   const msg = (e as { message?: string })?.message ?? '';
@@ -62,20 +67,23 @@ function mapError(e: unknown): never {
   throw new RiotError('UNKNOWN', 'Riot request failed. Try again, or update the key in the admin panel.');
 }
 
-/** Fetch last-10 ranked stats, compute KDA & CS/min lines, and the baseline match id. */
-export async function computeLines(): Promise<ComputeLinesResult> {
+/** Fetch last-10 ranked stats for a player, compute KDA & CS/min lines, and the baseline match id. */
+export async function computeLines(player: RiotPlayer): Promise<ComputeLinesResult> {
   try {
-    const r = await riotProxy({ action: 'computeLines' });
+    const r = await riotProxy({ action: 'computeLines', player });
     return r.data as ComputeLinesResult;
   } catch (e) {
     return mapError(e);
   }
 }
 
-/** Fetch the most recent ranked match strictly newer than `baselineMatchId`. */
-export async function resolveLatest(baselineMatchId: string): Promise<ResolveLatestResult> {
+/** Fetch a player's most recent ranked match strictly newer than `baselineMatchId`. */
+export async function resolveLatest(
+  player: RiotPlayer | undefined,
+  baselineMatchId: string,
+): Promise<ResolveLatestResult> {
   try {
-    const r = await riotProxy({ action: 'resolveLatest', baselineMatchId });
+    const r = await riotProxy({ action: 'resolveLatest', player, baselineMatchId });
     return r.data as ResolveLatestResult;
   } catch (e) {
     return mapError(e);

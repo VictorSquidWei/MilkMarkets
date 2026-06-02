@@ -46,6 +46,7 @@ export type Market = MarketDoc & { id: string };
 
 export interface GameDoc {
   status: MarketStatus;
+  player?: { gameName: string; tagLine: string }; // tracked player for this game (multi-player)
   kdaLine: number;
   csLine: number;
   baselineMatchId: string;

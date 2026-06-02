@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { useMarkets } from '../hooks/useMarkets';
 import { useGames } from '../hooks/useGames';
 import { useTracked } from '../hooks/useTracked';
@@ -5,7 +6,7 @@ import { useUser } from '../hooks/useUser';
 import { usePositions } from '../hooks/usePositions';
 import MarketCard from '../components/MarketCard';
 import Loading from '../components/Loading';
-import type { MarketCategory, Position } from '../lib/types';
+import type { Game, MarketCategory, Position } from '../lib/types';
 
 const LOL_ORDER: Record<string, number> = { lol_win: 0, lol_kda: 1, lol_cs: 2 };
 
@@ -30,22 +31,24 @@ export default function Home() {
     positions.filter((p) => p.yesShares + p.noShares > 0 && !p.settled).map((p) => [p.marketId, p]),
   );
 
-  const latestGame = games[0];
-  const activeGame = latestGame && latestGame.status !== 'resolved' ? latestGame : null;
-  const lolMarkets = activeGame
-    ? markets
-        .filter((m) => m.gameId === activeGame.gameId)
-        .sort((a, b) => (LOL_ORDER[a.category] ?? 9) - (LOL_ORDER[b.category] ?? 9))
-    : [];
+  const activeGames = games.filter((g) => g.status !== 'resolved'); // newest-first
+  const gameMarkets = (g: Game) =>
+    markets
+      .filter((m) => m.gameId === g.gameId)
+      .sort((a, b) => (LOL_ORDER[a.category] ?? 9) - (LOL_ORDER[b.category] ?? 9));
+  const lolLabel = (g: Game) =>
+    g.player ? `${g.player.gameName}#${g.player.tagLine}` : `${tracked.gameName}#${tracked.tagLine}`;
+  const lolSub = (g: Game) => {
+    const parts: string[] = [];
+    if (g.marketIds.kda) parts.push(`KDA over ${g.kdaLine}`);
+    if (g.marketIds.cs) parts.push(`CS/min over ${g.csLine}`);
+    return parts.length ? parts.join(' · ') : undefined;
+  };
 
   const joeActive = markets.filter(
     (m) => m.category === ('joe' as MarketCategory) && m.status !== 'resolved',
   );
   const resolved = markets.filter((m) => m.status === 'resolved'); // newest-first (createdAt desc)
-
-  const lolSub = activeGame
-    ? `Lines: KDA over ${activeGame.kdaLine} · CS/min over ${activeGame.csLine}`
-    : undefined;
 
   return (
     <div>
@@ -54,18 +57,22 @@ export default function Home() {
         Live markets you can trade. Resolved ones drop into History below.
       </p>
 
-      <SectionHeading
-        title={`League of Legends · ${tracked.gameName}#${tracked.tagLine}`}
-        sub={lolSub}
-      />
-      {lolMarkets.length ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {lolMarkets.map((m) => (
-            <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
-          ))}
-        </div>
+      {activeGames.length ? (
+        activeGames.map((g) => (
+          <Fragment key={g.gameId}>
+            <SectionHeading title={`League of Legends · ${lolLabel(g)}`} sub={lolSub(g)} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {gameMarkets(g).map((m) => (
+                <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
+              ))}
+            </div>
+          </Fragment>
+        ))
       ) : (
-        <EmptyCard text="No live LoL game. The admin opens one when the tracked player queues up." />
+        <>
+          <SectionHeading title="League of Legends" />
+          <EmptyCard text="No live LoL games. An admin opens one when a tracked player queues up." />
+        </>
       )}
 
       <SectionHeading title="Things Joe Says" />

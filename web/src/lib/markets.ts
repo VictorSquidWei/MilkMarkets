@@ -18,7 +18,7 @@ import {
   type FieldValue,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { LMSR_B, TRACKED_PLAYER } from '../config/constants';
+import { LMSR_B } from '../config/constants';
 import { dayPST } from './time';
 import type { Game, GameDoc, MarketDoc, Outcome, PositionDoc } from './types';
 import type { ResolveLatestResult } from './riot';
@@ -47,31 +47,42 @@ export interface MarketSelection {
   cs: boolean;
 }
 
+export const MAX_ACTIVE_GAMES = 3;
+
 /**
- * Open a new LoL game, creating only the selected market types (spec US-G1). The CS/min market is
- * often skipped for support/jungle players where CS/min is misleading. Blocks if a game is still
- * unresolved (OQ-11).
+ * Open a new LoL game for `player`, creating only the selected market types (spec US-G1/D-1.0).
+ * One active game per player; at most MAX_ACTIVE_GAMES concurrent. CS/min is often skipped for
+ * support/jungle players where role autofill makes it misleading.
  */
 export async function openGame(
+  player: { gameName: string; tagLine: string },
   lines: { kdaLine: number; csLine: number },
   baselineMatchId: string,
   selection: MarketSelection,
 ): Promise<string> {
   if (!selection.win && !selection.kda && !selection.cs)
     throw new Error('Select at least one market to create.');
+  const gameName = player.gameName.trim();
+  const tagLine = player.tagLine.trim().replace(/^#/, '');
+  if (!gameName || !tagLine) throw new Error('Enter the player’s Riot ID (name and tag).');
 
-  const active = await getDocs(
+  const activeSnap = await getDocs(
     query(collection(db, 'games'), where('status', 'in', ['open', 'locked'])),
   );
-  if (!active.empty)
-    throw new Error('Resolve the current LoL game before opening a new one.');
+  const active = activeSnap.docs.map((d) => d.data() as GameDoc);
+  if (active.length >= MAX_ACTIVE_GAMES)
+    throw new Error(`Max ${MAX_ACTIVE_GAMES} games at once — resolve one before opening another.`);
+  if (
+    active.some(
+      (g) =>
+        g.player &&
+        g.player.gameName.toLowerCase() === gameName.toLowerCase() &&
+        g.player.tagLine.toLowerCase() === tagLine.toLowerCase(),
+    )
+  )
+    throw new Error(`${gameName}#${tagLine} already has an active game — resolve it first.`);
 
-  // Use the currently-tracked player's name in the Win market title.
-  const trackedSnap = await getDoc(doc(db, 'meta', 'tracked'));
-  const playerName =
-    (trackedSnap.exists() && (trackedSnap.data() as { gameName?: string }).gameName) ||
-    TRACKED_PLAYER.gameName;
-
+  const playerName = gameName;
   const now = Date.now();
   const gameRef = doc(collection(db, 'games'));
   const gameId = gameRef.id;
@@ -97,7 +108,7 @@ export async function openGame(
     marketIds.kda = ref.id;
     batch.set(ref, {
       ...base,
-      title: `KDA over ${lines.kdaLine}?`,
+      title: `${playerName} · KDA over ${lines.kdaLine}?`,
       category: 'lol_kda',
       gameId,
       line: lines.kdaLine,
@@ -109,7 +120,7 @@ export async function openGame(
     marketIds.cs = ref.id;
     batch.set(ref, {
       ...base,
-      title: `CS/min over ${lines.csLine}?`,
+      title: `${playerName} · CS/min over ${lines.csLine}?`,
       category: 'lol_cs',
       gameId,
       line: lines.csLine,
@@ -118,6 +129,7 @@ export async function openGame(
   }
   batch.set(gameRef, {
     status: 'open',
+    player: { gameName, tagLine },
     kdaLine: lines.kdaLine,
     csLine: lines.csLine,
     baselineMatchId,
@@ -131,15 +143,25 @@ export async function openGame(
   return gameId;
 }
 
-/** Lock a game's markets (status → locked, trading stops; spec BR-13). */
+/** Convenience: lock ALL of a game's markets at once (e.g. at kickoff). Per-market, reversible. */
 export async function lockGame(game: Game): Promise<void> {
   const now = Date.now();
   const batch = writeBatch(db);
   for (const id of [game.marketIds.win, game.marketIds.kda, game.marketIds.cs]) {
     if (id) batch.update(doc(db, 'markets', id), { status: 'locked', updatedAt: now });
   }
-  batch.update(doc(db, 'games', game.gameId), { status: 'locked' });
+  // game lifecycle stays 'open' (active) — locking is per-market now (spec US-G2).
   await batch.commit();
+}
+
+/** Lock a single market — stops its trading. Reversible via unlockMarket (admin; spec US-G2). */
+export async function lockMarket(marketId: string): Promise<void> {
+  await updateDoc(doc(db, 'markets', marketId), { status: 'locked', updatedAt: Date.now() });
+}
+
+/** Re-open a locked market for trading (admin; spec US-G2). */
+export async function unlockMarket(marketId: string): Promise<void> {
+  await updateDoc(doc(db, 'markets', marketId), { status: 'open', updatedAt: Date.now() });
 }
 
 /**

@@ -58,6 +58,14 @@ async function getTracked() {
   };
 }
 
+// Per-request player {gameName, tagLine} for multi-player; falls back to meta/tracked if absent.
+function playerFromReq(data) {
+  const p = data && data.player;
+  return p && p.gameName && p.tagLine
+    ? { gameName: String(p.gameName), tagLine: String(p.tagLine) }
+    : null;
+}
+
 async function resolvePuuid(apiKey, tracked) {
   const acct = await riotGet(
     `${AMERICAS}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(
@@ -117,7 +125,7 @@ exports.riotProxy = onCall(async (request) => {
   const action = request.data && request.data.action;
 
   if (action === 'computeLines') {
-    const tracked = await getTracked();
+    const tracked = playerFromReq(request.data) || (await getTracked());
     const puuid = await resolvePuuid(cfg.apiKey, tracked);
     const ids = await rankedMatchIds(puuid, cfg.apiKey, 15);
     if (ids.length === 0) throw new HttpsError('failed-precondition', 'NO_RANKED_GAMES');
@@ -143,7 +151,7 @@ exports.riotProxy = onCall(async (request) => {
   }
 
   if (action === 'resolveLatest') {
-    const tracked = await getTracked();
+    const tracked = playerFromReq(request.data) || (await getTracked());
     const puuid = await resolvePuuid(cfg.apiKey, tracked);
     const baseline = request.data.baselineMatchId;
     const ids = await rankedMatchIds(puuid, cfg.apiKey, 5);
