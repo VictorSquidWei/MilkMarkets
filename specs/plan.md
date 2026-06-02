@@ -116,6 +116,18 @@ Frontend-only, no backend change (trades are already written per buy/sell and wo
 - **Collapsible History** on Home — `useState(false)` (collapsed by default) with a count + chevron.
 - **Probability bar** on `MarketCard` — a thin YES(green)/NO(red) split bar. Theme-aware throughout.
 
+### D-1.3 — Futures markets + remove "Default LoL player" card (post-approval)
+
+Frontend-only; **reuses the Joe engine** (generic binary YES/NO, admin-set opening price, manual
+resolution) — no new mechanism:
+- New market category **`futures`** (`types.ts` + `labels.ts`). `markets.ts` adds `createFutures(title,
+  priceCents)` (mirror of `createJoe`, `dayPST: null` — not daily) and `resolveFutures` (→ `settleMarket`).
+- Admin gets a **"Futures"** card (title + fair starting ¢, then resolve YES/NO), placed between the LoL
+  and Joe cards. Home shows a **"Futures"** section between LoL and Joe (AC-C1.11).
+- **Removed the "Default LoL player" admin card** (obsolete under multi-player — each game stores its own
+  player typed at open time). `meta/tracked` is untouched and still serves as the open-game form
+  placeholder + server fallback; settable via `scripts/set-tracked.mjs`. No functionality affected.
+
 ### D-1.1 — Per-market lock / unlock (post-approval)
 
 `lockMarket(id)` / `unlockMarket(id)` flip a single market's `status` between `locked` and `open`

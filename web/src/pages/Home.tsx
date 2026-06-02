@@ -48,6 +48,9 @@ export default function Home() {
     return parts.length ? parts.join(' · ') : undefined;
   };
 
+  const futuresActive = markets.filter(
+    (m) => m.category === ('futures' as MarketCategory) && m.status !== 'resolved',
+  );
   const joeActive = markets.filter(
     (m) => m.category === ('joe' as MarketCategory) && m.status !== 'resolved',
   );
@@ -77,6 +80,17 @@ export default function Home() {
           <SectionHeading title="League of Legends" />
           <EmptyCard text="No live LoL games. An admin opens one when a tracked player queues up." />
         </>
+      )}
+
+      <SectionHeading title="Futures" sub="Admin-priced markets on anything" />
+      {futuresActive.length ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {futuresActive.map((m) => (
+            <MarketCard key={m.id} market={m} position={posByMarket.get(m.id)} />
+          ))}
+        </div>
+      ) : (
+        <EmptyCard text="No live futures right now." />
       )}
 
       <SectionHeading title="Things Joe Says" />

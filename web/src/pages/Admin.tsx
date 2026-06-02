@@ -14,6 +14,8 @@ import {
   resolveGame,
   createJoe,
   resolveJoe,
+  createFutures,
+  resolveFutures,
   deleteGameCascade,
   deleteMarketCascade,
   MAX_ACTIVE_GAMES,
@@ -45,8 +47,8 @@ export default function Admin() {
       <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
       <div className="mt-4 space-y-4">
         <RiotKeyCard />
-        <TrackedPlayerCard />
         <LolGameCard />
+        <FuturesCard />
         <JoeCard />
         <HistoryCard />
       </div>
@@ -90,72 +92,6 @@ function RiotKeyCard() {
         />
         <button className={btn} disabled={busy || !key.trim()} onClick={save}>
           {busy ? 'Saving…' : 'Save key'}
-        </button>
-      </div>
-      {msg && <p className="mt-2 text-sm text-yes-dark">{msg}</p>}
-      {err && <p className="mt-2 text-sm text-no">{err}</p>}
-    </Card>
-  );
-}
-
-function TrackedPlayerCard() {
-  const tracked = useTracked();
-  const [ign, setIgn] = useState('');
-  const [tag, setTag] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  async function save() {
-    const g = ign.trim();
-    const t = tag.trim().replace(/^#/, '');
-    if (!g || !t) {
-      setErr('Enter both the in-game name and the tag.');
-      return;
-    }
-    setBusy(true);
-    setMsg('');
-    setErr('');
-    try {
-      await setDoc(doc(db, 'meta', 'tracked'), { gameName: g, tagLine: t }, { merge: true });
-      setMsg(`Default set to ${g}#${t}.`);
-      setIgn('');
-      setTag('');
-    } catch {
-      setErr('Could not save (admin only).');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card title="Default LoL player">
-      <p className="text-sm text-ink/60">
-        Default{' '}
-        <b>
-          {tracked.gameName}#{tracked.tagLine}
-        </b>{' '}
-        — pre-fills the “open game” form below. Each game stores its own player, so changing this won’t
-        affect games already running.
-      </p>
-      <div className="mt-3 flex gap-2">
-        <input
-          value={ign}
-          onChange={(e) => setIgn(e.target.value)}
-          placeholder={tracked.gameName}
-          className="min-w-0 flex-1 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ink/40"
-        />
-        <div className="flex items-center rounded-xl border border-ink/15 px-2 focus-within:border-ink/40">
-          <span className="text-sm text-ink/40">#</span>
-          <input
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
-            placeholder={tracked.tagLine}
-            className="w-16 py-2 text-sm outline-none"
-          />
-        </div>
-        <button className={btn} disabled={busy || !ign.trim() || !tag.trim()} onClick={save}>
-          {busy ? 'Saving…' : 'Save'}
         </button>
       </div>
       {msg && <p className="mt-2 text-sm text-yes-dark">{msg}</p>}
@@ -585,6 +521,102 @@ function HistoryCard() {
           </ul>
         </div>
       )}
+      {err && <p className="mt-2 text-sm text-no">{err}</p>}
+    </Card>
+  );
+}
+
+function FuturesCard() {
+  const { markets } = useMarkets();
+  const open = markets.filter((m) => m.category === 'futures' && m.status !== 'resolved');
+  const [text, setText] = useState('');
+  const [priceStr, setPriceStr] = useState('50');
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+
+  const price = Number(priceStr);
+  const priceValid = Number.isFinite(price) && price >= 1 && price <= 99;
+
+  const run = async (tag: string, fn: () => Promise<void>) => {
+    setBusy(tag);
+    setMsg('');
+    setErr('');
+    try {
+      await fn();
+    } catch (e) {
+      setErr(errMsg(e));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  return (
+    <Card title="Futures">
+      <div className="flex gap-2">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Any yes/no question, e.g. “Will it snow on Christmas?”"
+          className="flex-1 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-ink/40"
+        />
+        <div className="flex items-center rounded-xl border border-ink/15 px-2 focus-within:border-ink/40">
+          <input
+            type="number"
+            min={1}
+            max={99}
+            value={priceStr}
+            onChange={(e) => setPriceStr(e.target.value)}
+            title="Starting (fair) YES price"
+            className="tnum w-12 py-2 text-right text-sm outline-none"
+          />
+          <span className="pl-1 text-sm text-ink/40">¢</span>
+        </div>
+        <button
+          className={btn}
+          disabled={busy === 'create' || !text.trim() || !priceValid}
+          onClick={() =>
+            run('create', async () => {
+              await createFutures(text, price);
+              setText('');
+              setMsg('Futures market opened.');
+            })
+          }
+        >
+          {busy === 'create' ? 'Opening…' : 'Open'}
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-ink/40">
+        Set the fair starting YES price you think is right — it opens at {priceValid ? price : 50}¢ and
+        then moves as people trade. Resolve it YES/NO when you know the outcome.
+      </p>
+
+      {open.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {open.map((m) => (
+            <li key={m.id} className="rounded-xl border border-ink/10 p-3">
+              <div className="text-sm font-medium">{m.title}</div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  className="flex-1 rounded-lg bg-yes py-1.5 text-sm font-semibold text-white hover:bg-yes-dark disabled:opacity-40"
+                  disabled={busy === m.id}
+                  onClick={() => run(m.id, () => resolveFutures(m.id, 'YES'))}
+                >
+                  Resolve YES
+                </button>
+                <button
+                  className="flex-1 rounded-lg bg-no py-1.5 text-sm font-semibold text-white hover:bg-no-dark disabled:opacity-40"
+                  disabled={busy === m.id}
+                  onClick={() => run(m.id, () => resolveFutures(m.id, 'NO'))}
+                >
+                  Resolve NO
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {msg && <p className="mt-2 text-sm text-yes-dark">{msg}</p>}
       {err && <p className="mt-2 text-sm text-no">{err}</p>}
     </Card>
   );

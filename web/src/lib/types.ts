@@ -1,6 +1,6 @@
 // Firestore document shapes (mirrors specs/plan.md §5).
 
-export type MarketCategory = 'lol_win' | 'lol_kda' | 'lol_cs' | 'joe';
+export type MarketCategory = 'lol_win' | 'lol_kda' | 'lol_cs' | 'futures' | 'joe';
 export type MarketStatus = 'open' | 'locked' | 'resolved';
 export type Outcome = 'YES' | 'NO';
 export type Side = 'YES' | 'NO';

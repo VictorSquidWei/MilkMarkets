@@ -253,6 +253,35 @@ export async function resolveJoe(marketId: string, outcome: Outcome): Promise<vo
   await settleMarket(marketId, outcome);
 }
 
+/**
+ * Create a Futures market: an admin-authored binary YES/NO with an admin-set fair starting price
+ * (1–99¢). Same engine as Joe (LMSR moves it as people trade; admin resolves manually). Spec US-F.
+ */
+export async function createFutures(title: string, initialPriceCents = 50): Promise<string> {
+  const text = title.trim();
+  if (!text) throw new Error('Enter a market title.');
+  const price = Number.isFinite(initialPriceCents) ? initialPriceCents : 50;
+
+  const now = Date.now();
+  const ref = doc(collection(db, 'markets'));
+  const batch = writeBatch(db);
+  batch.set(ref, {
+    ...newMarketBase(now, price),
+    title: text,
+    category: 'futures',
+    gameId: null,
+    line: null,
+    dayPST: null,
+  } satisfies MarketDoc);
+  await batch.commit();
+  return ref.id;
+}
+
+/** Resolve a Futures market manually to YES or NO (spec US-F). */
+export async function resolveFutures(marketId: string, outcome: Outcome): Promise<void> {
+  await settleMarket(marketId, outcome);
+}
+
 // ── History cleanup (admin) ──────────────────────────────────────────────────
 // Deletes a resolved market/game and its positions + trades. This removes the RECORD only —
 // payouts already applied at resolution are final (balances / realizedProfit / wins / losses are

@@ -202,6 +202,8 @@ decide what to trade._
   regardless of trade count; theme-aware; pauses on hover; respects reduced-motion.
 - **AC-C1.10** _(Added post-approval)_ Each market card shows a thin **YES/NO probability bar**
   (analytical, stock-split style).
+- **AC-C1.11** _(Added post-approval)_ The home page has a **"Futures"** section positioned **between
+  the League of Legends section(s) and "Things Joe Says"** (see US-F1/US-F2).
 
 ### D. Market Detail & Trading
 
@@ -312,7 +314,22 @@ the actual match._
   per **BR-12**.
 - **AC-H2.2** A resolved Joe market is final (**BR-14**).
 
-### I. Admin Utilities (Riot Key · Tracked Player · History)
+### H′. Futures Markets (Admin) — _(Added post-approval)_
+
+**US-F1 — Create a Futures market.** _As Admin, I want to open a yes/no market on anything with a fair
+starting price I choose._
+- **AC-F1.1** I enter a question/title and a **starting YES price (1–99¢)**; a binary market opens at
+  that price and **moves via LMSR** as people trade (same engine as Joe).
+- **AC-F1.2** Multiple may be open at once; there is no daily/date restriction.
+- **AC-F1.3** It appears on the home page in a **"Futures"** section placed **between the League of
+  Legends markets and "Things Joe Says"** (AC-C1.11).
+
+**US-F2 — Resolve a Futures market.** _As Admin, I want to settle it YES or NO when the outcome is
+known._
+- **AC-F2.1** I pick YES or NO; payouts apply per **BR-12** and it's final (**BR-14**). Resolved
+  futures move into History like any other market.
+
+### I. Admin Utilities (Riot Key · History)
 
 **US-I1 — Rotate the Riot key in-app.** _As Admin, I want to paste a new Riot key daily without a
 redeploy._
@@ -328,16 +345,14 @@ redeploy._
   surfaces a clear message such as **"Riot key expired or rate-limited — update it in the admin panel."**
 - **AC-I2.2** Such failures **never** partially resolve a market or corrupt balances.
 
-**US-I3 — Choose the tracked LoL player.** _(Added post-approval.)_ _As Admin, I want to set which
-Riot account the LoL markets follow._
-- **AC-I3.1** The admin panel shows the **currently tracked** player and lets me set a new
-  **in-game name + tag** (e.g. `Drogo400` / `NA1`).
-- **AC-I3.2** After saving, the next **Open new game** fetches that account's games, and the Markets
-  home + Win-market title reflect the new name.
-- **AC-I3.3** Switching players is **blocked while a LoL game is open or locked** (resolve it first —
-  its markets belong to the previous player).
-- **AC-I3.4** The tracked name/tag is **non-secret and world-readable** to logged-in users; only the
-  admin can change it.
+**US-I3 — Tracked LoL player.** _(Superseded by multi-player; the in-app card was removed.)_
+Since each LoL game now stores **its own player** (the admin types the Riot ID when opening a game,
+per the multi-player update), there is no per-game "tracked player" to manage. The old
+**"Default LoL player"** admin card was therefore **removed** (it was pointless and slightly
+misleading). `meta/tracked` lives on only as: (a) the **placeholder hint** that pre-fills the
+open-game form, and (b) the **server-side fallback** if a call omits a player. It's editable out-of-band
+via `scripts/set-tracked.mjs` if ever needed. Removing the card changes **no** functionality (verified:
+open-game still requires a typed Riot ID; legacy games were backfilled with their player).
 
 **US-I4 — Delete history markets.** _(Added post-approval.)_ _As Admin, I want to remove old resolved
 markets to keep the History list tidy._
