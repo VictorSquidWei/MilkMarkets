@@ -20,9 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true # auto-enables GitHub Pages (build type: GitHub Actions) on first run
+        uses: actions/configure-pages@v5 # Pages is enabled in repo settings (Source: GitHub Actions)
       - uses: actions/setup-node@v4
         with:
           node-version: 20
