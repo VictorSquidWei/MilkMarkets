@@ -247,6 +247,12 @@ decide what to trade._
 - **AC-E1.4** Values update to reflect trades and price movements (on refresh/return at minimum).
 - **AC-E1.5** _(Added post-approval)_ Each open position shows the **average price paid** ("Bought X¢" =
   cost basis ÷ shares), the **current price**, and **unrealized P&L**. Visible and theme-aware.
+- **AC-E1.6** _(Added post-approval)_ The portfolio has a **collapsible "Trade history"** section
+  (collapsed by default) listing the user's **own** buys/sells — action, side, shares, price, amount,
+  market, time — **filterable by All / Buys / Sells**, newest first. Live-updating. For trades in a
+  **resolved** market each row also shows the **realized P&L** of that trade (buy = payout − cost;
+  sell = proceeds − resolution value), defined so per-trade P&Ls **sum to the position's realized
+  P&L** (reconciles with the leaderboard).
 
 ### F. Leaderboard
 

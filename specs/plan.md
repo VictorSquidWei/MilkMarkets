@@ -116,6 +116,16 @@ Frontend-only, no backend change (trades are already written per buy/sell and wo
 - **Collapsible History** on Home — `useState(false)` (collapsed by default) with a count + chevron.
 - **Probability bar** on `MarketCard` — a thin YES(green)/NO(red) split bar. Theme-aware throughout.
 
+### D-1.5 — Portfolio trade history (post-approval)
+
+`hooks/useMyTrades(uid)` subscribes to `trades where uid == me` and **sorts client-side by ts desc**
+(only the automatic single-field index on `uid` — no composite index, no deploy). Portfolio gains a
+**collapsible "Trade history"** section (collapsed by default) with an **All / Buys / Sells** segmented
+filter; each row shows Buy/Sell · shares+side · price · −/+ amount · market · time. Frontend-only.
+Rows in a **resolved** market also show a **per-trade realized P&L**: buy → `(won?shares:0) − cost`,
+sell → `proceeds − (won?shares:0)`. These sum to the position's realized P&L (= payout − net cost), so
+they reconcile with the leaderboard's `realizedProfit`. Derived from existing data; no schema change.
+
 ### D-1.4 — Hide "Things Joe Says" from Joe (fairness, post-approval)
 
 The user named Joe shouldn't bet on what he himself will say. Client-side gate keyed on a new
